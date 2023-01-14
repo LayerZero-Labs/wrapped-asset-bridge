@@ -6,6 +6,7 @@
 
 # Wrapped Asset Bridge
 
+Lock and mint bridge
 
 ## Getting Started
 
