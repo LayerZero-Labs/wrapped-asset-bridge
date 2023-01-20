@@ -413,7 +413,7 @@ describe("OriginalTokenBridge", () => {
         it("withdraws fees", async () => {
             const withdrawalFeeBps = 20 // 0.2%
             const totalBps = await originalTokenBridge.TOTAL_BPS() // 100%
-            const bridgingFee = await originalTokenBridge.estimateBridgeFee(originalToken.address, amount, user.address, false, adapterParams).nativeFee
+            const bridgingFee = await originalTokenBridge.estimateBridgeFee(originalToken.address, amount, user.address, false, adapterParams)
             const withdrawalFee = amount.mul(withdrawalFeeBps).div(totalBps)
 
             await originalTokenBridge.registerToken(originalToken.address)

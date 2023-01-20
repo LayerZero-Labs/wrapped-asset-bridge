@@ -117,7 +117,7 @@ describe("End to End", function () {
 
             describe("bridge 10 wrapped ERC20 tokens to Ethereum", function () {
                 beforeEach(async () => {
-                    const fee = await wrappedTokenBridge.estimateBridgeFee(wrappedToken.address, ethereumChainId, ethereumAmount, user.address, false, false, adapterParams).nativeFee
+                    const fee = await wrappedTokenBridge.estimateBridgeFee(wrappedToken.address, ethereumChainId, ethereumAmount, user.address, false, false, adapterParams)
                     await wrappedTokenBridge.connect(user).bridge(wrappedToken.address, ethereumChainId, ethereumAmount, user.address, false, callParams, adapterParams, { value: fee.nativeFee })
                 })
 
