@@ -2,23 +2,23 @@
 pragma solidity ^0.8.17;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {LzLib} from "@layerzerolabs/solidity-examples/contracts/libraries/LzLib.sol";
 import {TokenBridgeBase} from "./TokenBridgeBase.sol";
 import {IWrappedERC20} from "./interfaces/IWrappedERC20.sol";
 
-/// @notice Mints a wrapped token when a message received from a remote chain and burns a wrapped token whe bridging to a remote chain
+/// @dev Mints a wrapped token when a message received from a remote chain and burns a wrapped token when bridging to a remote chain
 contract WrappedTokenBridge is TokenBridgeBase {
-    using SafeERC20 for IERC20;
-
-    // [local token] => [remote chain] => [remote token]
+    /// @notice Tokens that can be bridged
+    /// @dev [local token] => [remote chain] => [remote token]
     mapping(address => mapping(uint16 => address)) public localToRemote;
 
-    // [remote token] => [remote chain] => [local token]
+    /// @notice Tokens that can be bridged
+    /// @dev [remote token] => [remote chain] => [local token]
     mapping(address => mapping(uint16 => address)) public remoteToLocal;
 
-    // [remote chain] => [remote token] => [bridged amount]
-    mapping(uint16 => mapping(address => uint)) totalValueLocked;
+    /// @notice Total value bridged per token and remote chains
+    /// @dev [remote chain] => [remote token] => [bridged amount]
+    mapping(uint16 => mapping(address => uint)) public totalValueLocked;
 
     event WrapToken(address localToken, address remoteToken, uint16 remoteChainId, address to, uint amount);
     event UnwrapToken(address localToken, address remoteToken, uint16 remoteChainId, address to, uint amount);
@@ -40,6 +40,8 @@ contract WrappedTokenBridge is TokenBridgeBase {
         return lzEndpoint.estimateFees(remoteChainId, address(this), payload, useZro, adapterParams);
     }
 
+    /// @notice Bridges `localToken` to the remote chain
+    /// @dev Burns wrapped tokens and sends LZ message to the remote chain to unlock original tokens
     function bridge(address localToken, uint16 remoteChainId, uint amount, address to, bool unwrap, LzLib.CallParams calldata callParams, bytes memory adapterParams) external payable whenNotPaused(localToken) nonReentrant {
         require(localToken != address(0), "WrappedTokenBridge: invalid token");
         require(to != address(0), "WrappedTokenBridge: invalid to");
@@ -58,13 +60,15 @@ contract WrappedTokenBridge is TokenBridgeBase {
         emit UnwrapToken(localToken, remoteToken, remoteChainId, to, amount);
     }
 
+    /// @notice Receives ERC20 tokens or ETH from the remote chain
+    /// @dev Mints wrapped tokens in response to LZ message from the remote chain
     function _nonblockingLzReceive(uint16 srcChainId, bytes memory, uint64, bytes memory payload) internal virtual override {
         (uint8 packetType, address remoteToken, address to, uint amount) = abi.decode(payload, (uint8, address, address, uint));
         require(packetType == PT_WRAP, "WrappedTokenBridge: unknown packet type");
 
         address localToken = remoteToLocal[remoteToken][srcChainId];
         require(localToken != address(0), "WrappedTokenBridge: token is not supported");
-        require(!globalPaused && !pausedTokens[localToken], "OriginalTokenBridge: paused");
+        require(!globalPaused && !pausedTokens[localToken], "WrappedTokenBridge: paused");
 
         totalValueLocked[srcChainId][remoteToken] += amount;
         IWrappedERC20(localToken).mint(to, amount);

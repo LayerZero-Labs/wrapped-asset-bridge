@@ -7,14 +7,20 @@ import {LzLib} from "@layerzerolabs/solidity-examples/contracts/libraries/LzLib.
 import {TokenBridgeBase} from "./TokenBridgeBase.sol";
 import {IWETH} from "./interfaces/IWETH.sol";
 
-/// @notice Locks an ERC20 on the source chain and sends LZ message to the remote chain to mint a wrapped token
+/// @dev Locks an ERC20 on the source chain and sends LZ message to the remote chain to mint a wrapped token
 contract OriginalTokenBridge is TokenBridgeBase {
     using SafeERC20 for IERC20;
 
-    /// @notice total bps representing 100%
+    /// @notice Total bps representing 100%
     uint16 public constant TOTAL_BPS = 10000;
 
+    /// @notice The amount of time the owner needs to wait to withdraw locked funds after enabling emergency withdraw
+    uint public constant EMERGENCY_WITHDRAW_DELAY = 1 weeks;
+
+    /// @notice Tokens that can be bridged to the remote chain
     mapping(address => bool) public supportedTokens;
+
+    /// @notice Total value locked per each supported token
     mapping(address => uint) public totalValueLocked;
 
     /// @notice LayerZero id of the remote chain where wrapped tokens are minted
@@ -23,9 +29,13 @@ contract OriginalTokenBridge is TokenBridgeBase {
     /// @notice An optional fee charged on withdrawal, expressed in bps. E.g., 1bps = 0.01%
     uint16 public withdrawalFeeBps;
 
-    address public immutable weth;
+    /// @notice Indicates whether emergency withdraw is enabled by the owner
     bool public emergencyWithdrawEnabled;
+
+    /// @notice The time when the owner can emergency withdraw locked funds
     uint public emergencyWithdrawTime;
+
+    address public immutable weth;
 
     event SendToken(address token, address from, address to, uint amount);
     event ReceiveToken(address token, address to, uint amount);
@@ -42,6 +52,7 @@ contract OriginalTokenBridge is TokenBridgeBase {
     }
 
     constructor(address _endpoint, uint16 _remoteChainId, address _weth) TokenBridgeBase(_endpoint) {
+        require(_weth != address(0), "OriginalTokenBridge: invalid WETH address");
         remoteChainId = _remoteChainId;
         weth = _weth;
     }
@@ -68,11 +79,17 @@ contract OriginalTokenBridge is TokenBridgeBase {
         return IERC20(token).balanceOf(address(this)) - totalValueLocked[token];
     }
 
-    function estimateBridgeFee(address token, uint amount, address to, bool useZro, bytes calldata adapterParams) external view returns (uint nativeFee, uint zroFee) {
+    function estimateBridgeFee(address token, uint amount, address to, bool useZro, bytes calldata adapterParams) public view returns (uint nativeFee, uint zroFee) {
         bytes memory payload = abi.encode(PT_WRAP, token, to, amount);
         return lzEndpoint.estimateFees(remoteChainId, address(this), payload, useZro, adapterParams);
     }
 
+    function estimateBridgeETHFee(uint amount, address to, bool useZro, bytes calldata adapterParams) public view returns (uint nativeFee, uint zroFee) {
+        return estimateBridgeFee(weth, amount, to, useZro, adapterParams);
+    }
+
+    /// @notice Bridges ERC20 to the remote chain
+    /// @dev Locks an ERC20 on the source chain and sends LZ message to the remote chain to mint a wrapped token
     function bridge(address token, uint amount, address to, LzLib.CallParams calldata callParams, bytes memory adapterParams) external payable whenNotPaused(token) nonReentrant {
         require(token != address(0), "OriginalTokenBridge: invalid token");
         require(to != address(0), "OriginalTokenBridge: invalid to");
@@ -92,6 +109,8 @@ contract OriginalTokenBridge is TokenBridgeBase {
         emit SendToken(token, msg.sender, to, amount);
     }
 
+    /// @notice Bridges ETH to the remote chain
+    /// @dev Locks WETH on the source chain and sends LZ message to the remote chain to mint a wrapped token
     function bridgeETH(uint amount, address to, LzLib.CallParams calldata callParams, bytes memory adapterParams) external payable whenNotPaused(weth) nonReentrant {
         // gas savings
         address _weth = weth;
@@ -112,13 +131,13 @@ contract OriginalTokenBridge is TokenBridgeBase {
     function enableEmergencyWithdraw(bool enabled) external onlyOwner {
         emergencyWithdrawEnabled = enabled;
         // overrides an existing lock time
-        emergencyWithdrawTime = enabled ? block.timestamp + 1 weeks : 0;
+        emergencyWithdrawTime = enabled ? block.timestamp + EMERGENCY_WITHDRAW_DELAY : 0;
         emit EnableEmergencyWithdraw(enabled, emergencyWithdrawTime);
     }
 
     function withdrawFee(address token, address to, uint amount) public onlyOwner {
         uint fee = accruedFee(token);
-        require(amount <= fee, "TokenBridge: not enough fees collected");
+        require(amount <= fee, "OriginalTokenBridge: not enough fees collected");
 
         IERC20(token).safeTransfer(to, amount);
         emit WithdrawFee(token, to, amount);
@@ -135,10 +154,12 @@ contract OriginalTokenBridge is TokenBridgeBase {
         withdrawTotalValueLocked(token, to, totalValueLocked[token]);
     }
 
-    function _nonblockingLzReceive(uint16 srcChainId, bytes memory, uint64, bytes memory _payload) internal virtual override {
+    /// @notice Receives ERC20 tokens or ETH from the remote chain
+    /// @dev Unlocks locked ERC20 tokens or ETH in response to LZ message from the remote chain
+    function _nonblockingLzReceive(uint16 srcChainId, bytes memory, uint64, bytes memory payload) internal virtual override {
         require(srcChainId == remoteChainId, "OriginalTokenBridge: invalid source chain id");
 
-        (uint8 packetType, address token, address to, uint amount, bool unwrap) = abi.decode(_payload, (uint8, address, address, uint, bool));
+        (uint8 packetType, address token, address to, uint amount, bool unwrap) = abi.decode(payload, (uint8, address, address, uint, bool));
         require(packetType == PT_UNWRAP, "OriginalTokenBridge: unknown packet type");
         require(!globalPaused && !pausedTokens[token], "OriginalTokenBridge: paused");
         require(supportedTokens[token], "OriginalTokenBridge: token is not supported");
@@ -160,4 +181,7 @@ contract OriginalTokenBridge is TokenBridgeBase {
             emit ReceiveToken(token, to, amount);
         }
     }
+
+    /// @dev Allows receiving ETH when calling WETH.withdraw()
+    receive() external payable {}
 }

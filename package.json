@@ -17,7 +17,6 @@
   },
   "dependencies": {
     "@layerzerolabs/solidity-examples": "0.0.6",
-    "@uniswap/v2-periphery": "1.1.0-beta.0",
     "@openzeppelin/contracts": "^4.4.1"
   },
   "devDependencies": {
