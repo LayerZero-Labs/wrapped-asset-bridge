@@ -64,7 +64,7 @@ describe("End to End", function () {
     describe("bridge 10 ERC20 tokens from Ethereum", function () {
         beforeEach(async () => {
             await ethereumBridge.registerToken(ethereumERC20.address)
-            await wrappedTokenBridge.registerTokens(wrappedToken.address, ethereumChainId, ethereumERC20.address)
+            await wrappedTokenBridge.registerToken(wrappedToken.address, ethereumChainId, ethereumERC20.address)
 
             await ethereumERC20.connect(user).approve(ethereumBridge.address, ethereumAmount)
             const fee = await ethereumBridge.estimateBridgeFee(ethereumERC20.address, ethereumAmount, user.address, false, adapterParams)
@@ -85,7 +85,7 @@ describe("End to End", function () {
         describe("bridge 5 ERC20 tokens from Polygon", function () {
             beforeEach(async () => {
                 await polygonBridge.registerToken(polygonERC20.address)
-                await wrappedTokenBridge.registerTokens(wrappedToken.address, polygonChainId, polygonERC20.address)
+                await wrappedTokenBridge.registerToken(wrappedToken.address, polygonChainId, polygonERC20.address)
 
                 await polygonERC20.connect(user).approve(polygonBridge.address, polygonAmount)
                 const fee = await polygonBridge.estimateBridgeFee(polygonERC20.address, polygonAmount, user.address, false, adapterParams)
@@ -110,8 +110,7 @@ describe("End to End", function () {
                 const fee = await wrappedTokenBridge.estimateBridgeFee(wrappedToken.address, polygonChainId, amount, user.address, false, false, adapterParams)
 
                 it("reverts when called by non owner", async () => {
-                    await expect(wrappedTokenBridge.connect(user).bridge(wrappedToken.address, polygonChainId, amount, user.address, false, callParams, adapterParams, { value: fee.nativeFee }))
-                        .to.be.revertedWith("WrappedTokenBridge: insufficient liquidity on the destination")
+                    await expect(wrappedTokenBridge.connect(user).bridge(wrappedToken.address, polygonChainId, amount, user.address, false, callParams, adapterParams, { value: fee.nativeFee })).to.be.revertedWith("WrappedTokenBridge: insufficient liquidity on the destination")
                 })
             })
 
@@ -158,7 +157,7 @@ describe("End to End", function () {
     describe("bridge ETH from Ethereum", function () {
         beforeEach(async () => {
             await ethereumBridge.registerToken(weth.address)
-            await wrappedTokenBridge.registerTokens(wrappedToken.address, ethereumChainId, weth.address)
+            await wrappedTokenBridge.registerToken(wrappedToken.address, ethereumChainId, weth.address)
 
             const fee = await ethereumBridge.estimateBridgeETHFee(ethereumAmount, user.address, false, adapterParams)
             await ethereumBridge.connect(user).bridgeETH(ethereumAmount, user.address, callParams, adapterParams, { value: ethereumAmount.add(fee.nativeFee) })

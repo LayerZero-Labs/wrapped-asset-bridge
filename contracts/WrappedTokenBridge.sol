@@ -22,17 +22,17 @@ contract WrappedTokenBridge is TokenBridgeBase {
 
     event WrapToken(address localToken, address remoteToken, uint16 remoteChainId, address to, uint amount);
     event UnwrapToken(address localToken, address remoteToken, uint16 remoteChainId, address to, uint amount);
-    event RegisterTokens(address localToken, uint16 remoteChainId, address remoteToken);
+    event RegisterToken(address localToken, uint16 remoteChainId, address remoteToken);
 
     constructor(address _endpoint) TokenBridgeBase(_endpoint) {}
 
-    function registerTokens(address localToken, uint16 remoteChainId, address remoteToken) external onlyOwner {
+    function registerToken(address localToken, uint16 remoteChainId, address remoteToken) external onlyOwner {
         require(localToken != address(0), "WrappedTokenBridge: invalid local token");
         require(remoteToken != address(0), "WrappedTokenBridge: invalid remote token");
 
         localToRemote[localToken][remoteChainId] = remoteToken;
         remoteToLocal[remoteToken][remoteChainId] = localToken;
-        emit RegisterTokens(localToken, remoteChainId, remoteToken);
+        emit RegisterToken(localToken, remoteChainId, remoteToken);
     }
 
     function estimateBridgeFee(address localToken, uint16 remoteChainId, uint amount, address to, bool unwrap, bool useZro, bytes calldata adapterParams) external view returns (uint nativeFee, uint zroFee) {

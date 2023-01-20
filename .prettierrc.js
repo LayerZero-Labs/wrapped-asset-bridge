@@ -14,7 +14,7 @@ module.exports = {
 		{
 			files: "*.ts",
 			options: {
-				printWidth: 145,
+				printWidth: 300,
 				semi: false,
 				tabWidth: 4,
 				useTabs: false,
@@ -24,7 +24,7 @@ module.exports = {
 		{
 			files: "*.js",
 			options: {
-				printWidth: 145,
+				printWidth: 300,
 				semi: false,
 				tabWidth: 4,
 				useTabs: false,

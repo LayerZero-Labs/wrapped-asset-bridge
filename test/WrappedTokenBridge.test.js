@@ -14,8 +14,7 @@ describe("WrappedTokenBridge", () => {
     let wrappedTokenEndpoint, wrappedTokenBridgeFactory
     let callParams, adapterParams
 
-    const createPayload = (pk = pkWrap, token = originalToken.address) =>
-        utils.defaultAbiCoder.encode(["uint8", "address", "address", "uint256"], [pk, token, user.address, amount])
+    const createPayload = (pk = pkWrap, token = originalToken.address) => utils.defaultAbiCoder.encode(["uint8", "address", "address", "uint256"], [pk, token, user.address, amount])
 
     beforeEach(async () => {
         [owner, user] = await ethers.getSigners()
@@ -52,25 +51,19 @@ describe("WrappedTokenBridge", () => {
 
     describe("registerToken", () => {
         it("reverts when called by non owner", async () => {
-            await expect(
-                wrappedTokenBridge.connect(user).registerTokens(wrappedToken.address, originalTokenChainId, originalToken.address)
-            ).to.be.revertedWith("Ownable: caller is not the owner")
+            await expect(wrappedTokenBridge.connect(user).registerToken(wrappedToken.address, originalTokenChainId, originalToken.address)).to.be.revertedWith("Ownable: caller is not the owner")
         })
 
         it("reverts when local token is address zero", async () => {
-            await expect(
-                wrappedTokenBridge.registerTokens(constants.AddressZero, originalTokenChainId, originalToken.address)
-            ).to.be.revertedWith("WrappedTokenBridge: invalid local token")
+            await expect(wrappedTokenBridge.registerToken(constants.AddressZero, originalTokenChainId, originalToken.address)).to.be.revertedWith("WrappedTokenBridge: invalid local token")
         })
 
         it("reverts when remote token is address zero", async () => {
-            await expect(
-                wrappedTokenBridge.registerTokens(wrappedToken.address, originalTokenChainId, constants.AddressZero)
-            ).to.be.revertedWith("WrappedTokenBridge: invalid remote token")
+            await expect(wrappedTokenBridge.registerToken(wrappedToken.address, originalTokenChainId, constants.AddressZero)).to.be.revertedWith("WrappedTokenBridge: invalid remote token")
         })
 
         it("registers tokens", async () => {
-            await wrappedTokenBridge.registerTokens(wrappedToken.address, originalTokenChainId, originalToken.address)
+            await wrappedTokenBridge.registerToken(wrappedToken.address, originalTokenChainId, originalToken.address)
 
             expect(await wrappedTokenBridge.localToRemote(wrappedToken.address, originalTokenChainId)).to.be.eq(originalToken.address)
             expect(await wrappedTokenBridge.remoteToLocal(originalToken.address, originalTokenChainId)).to.be.eq(wrappedToken.address)
@@ -80,35 +73,27 @@ describe("WrappedTokenBridge", () => {
     describe("_nonblockingLzReceive", () => {
         it("reverts when payload has incorrect packet type", async () => {
             const pkInvalid = 1
-            await expect(wrappedTokenBridge.simulateNonblockingLzReceive(originalTokenChainId, createPayload(pkInvalid))).to.be.revertedWith(
-                "WrappedTokenBridge: unknown packet type"
-            )
+            await expect(wrappedTokenBridge.simulateNonblockingLzReceive(originalTokenChainId, createPayload(pkInvalid))).to.be.revertedWith("WrappedTokenBridge: unknown packet type")
         })
 
         it("reverts when tokens aren't registered", async () => {
-            await expect(wrappedTokenBridge.simulateNonblockingLzReceive(originalTokenChainId, createPayload())).to.be.revertedWith(
-                "WrappedTokenBridge: token is not supported"
-            )
+            await expect(wrappedTokenBridge.simulateNonblockingLzReceive(originalTokenChainId, createPayload())).to.be.revertedWith("WrappedTokenBridge: token is not supported")
         })
 
         it("reverts when globalPaused is true", async () => {
-            await wrappedTokenBridge.registerTokens(wrappedToken.address, originalTokenChainId, originalToken.address)
+            await wrappedTokenBridge.registerToken(wrappedToken.address, originalTokenChainId, originalToken.address)
             await wrappedTokenBridge.setGlobalPause(true)
-            await expect(wrappedTokenBridge.simulateNonblockingLzReceive(originalTokenChainId, createPayload())).to.be.revertedWith(
-                "WrappedTokenBridge: paused"
-            )
+            await expect(wrappedTokenBridge.simulateNonblockingLzReceive(originalTokenChainId, createPayload())).to.be.revertedWith("WrappedTokenBridge: paused")
         })
 
         it("reverts when token is paused", async () => {
-            await wrappedTokenBridge.registerTokens(wrappedToken.address, originalTokenChainId, originalToken.address)
+            await wrappedTokenBridge.registerToken(wrappedToken.address, originalTokenChainId, originalToken.address)
             await wrappedTokenBridge.setTokenPause(wrappedToken.address, true)
-            await expect(wrappedTokenBridge.simulateNonblockingLzReceive(originalTokenChainId, createPayload())).to.be.revertedWith(
-                "WrappedTokenBridge: paused"
-            )
+            await expect(wrappedTokenBridge.simulateNonblockingLzReceive(originalTokenChainId, createPayload())).to.be.revertedWith("WrappedTokenBridge: paused")
         })
 
         it("mints wrapped tokens", async () => {
-            await wrappedTokenBridge.registerTokens(wrappedToken.address, originalTokenChainId, originalToken.address)
+            await wrappedTokenBridge.registerToken(wrappedToken.address, originalTokenChainId, originalToken.address)
             await wrappedTokenBridge.simulateNonblockingLzReceive(originalTokenChainId, createPayload())
 
             expect(await wrappedToken.totalSupply()).to.be.eq(amount)
@@ -125,68 +110,42 @@ describe("WrappedTokenBridge", () => {
 
         it("reverts when globalPaused is true", async () => {
             await wrappedTokenBridge.setGlobalPause(true)
-            await expect(
-                wrappedTokenBridge
-                    .connect(user)
-                    .bridge(wrappedToken.address, originalTokenChainId, amount, user.address, false, callParams, adapterParams, { value: fee })
-            ).to.be.revertedWith("TokenBridgeBase: paused")
+            await expect(wrappedTokenBridge.connect(user).bridge(wrappedToken.address, originalTokenChainId, amount, user.address, false, callParams, adapterParams, { value: fee })).to.be.revertedWith("TokenBridgeBase: paused")
         })
 
         it("reverts when token is paused", async () => {
             await wrappedTokenBridge.setTokenPause(wrappedToken.address, true)
-            await expect(
-                wrappedTokenBridge
-                    .connect(user)
-                    .bridge(wrappedToken.address, originalTokenChainId, amount, user.address, false, callParams, adapterParams, { value: fee })
-            ).to.be.revertedWith("TokenBridgeBase: paused")
+            await expect(wrappedTokenBridge.connect(user).bridge(wrappedToken.address, originalTokenChainId, amount, user.address, false, callParams, adapterParams, { value: fee })).to.be.revertedWith("TokenBridgeBase: paused")
         })
 
         it("reverts when token is address zero", async () => {
-            await expect(
-                wrappedTokenBridge
-                    .connect(user)
-                    .bridge(constants.AddressZero, originalTokenChainId, amount, user.address, false, callParams, adapterParams, { value: fee })
-            ).to.be.revertedWith("WrappedTokenBridge: invalid token")
+            await expect(wrappedTokenBridge.connect(user).bridge(constants.AddressZero, originalTokenChainId, amount, user.address, false, callParams, adapterParams, { value: fee })).to.be.revertedWith("WrappedTokenBridge: invalid token")
         })
 
         it("reverts when to is address zero", async () => {
             await expect(
-                wrappedTokenBridge
-                    .connect(user)
-                    .bridge(wrappedToken.address, originalTokenChainId, amount, constants.AddressZero, false, callParams, adapterParams, {
-                        value: fee,
-                    })
+                wrappedTokenBridge.connect(user).bridge(wrappedToken.address, originalTokenChainId, amount, constants.AddressZero, false, callParams, adapterParams, {
+                    value: fee,
+                })
             ).to.be.revertedWith("WrappedTokenBridge: invalid to")
         })
 
         it("reverts when useCustomAdapterParams is false and non-empty adapterParams are passed", async () => {
             const adapterParamsV1 = ethers.utils.solidityPack(["uint16", "uint256"], [1, 200000])
-            await expect(
-                wrappedTokenBridge
-                    .connect(user)
-                    .bridge(wrappedToken.address, originalTokenChainId, amount, user.address, false, callParams, adapterParamsV1, { value: fee })
-            ).to.be.revertedWith("TokenBridgeBase: adapterParams must be empty")
+            await expect(wrappedTokenBridge.connect(user).bridge(wrappedToken.address, originalTokenChainId, amount, user.address, false, callParams, adapterParamsV1, { value: fee })).to.be.revertedWith("TokenBridgeBase: adapterParams must be empty")
         })
 
         it("reverts when token is not registered", async () => {
-            await expect(
-                wrappedTokenBridge
-                    .connect(user)
-                    .bridge(wrappedToken.address, originalTokenChainId, amount, user.address, false, callParams, adapterParams, { value: fee })
-            ).to.be.revertedWith("WrappedTokenBridge: token is not supported")
+            await expect(wrappedTokenBridge.connect(user).bridge(wrappedToken.address, originalTokenChainId, amount, user.address, false, callParams, adapterParams, { value: fee })).to.be.revertedWith("WrappedTokenBridge: token is not supported")
         })
 
         it("reverts when amount is 0", async () => {
-            await wrappedTokenBridge.registerTokens(wrappedToken.address, originalTokenChainId, originalToken.address)
-            await expect(
-                wrappedTokenBridge
-                    .connect(user)
-                    .bridge(wrappedToken.address, originalTokenChainId, 0, user.address, false, callParams, adapterParams, { value: fee })
-            ).to.be.revertedWith("WrappedTokenBridge: invalid amount")
+            await wrappedTokenBridge.registerToken(wrappedToken.address, originalTokenChainId, originalToken.address)
+            await expect(wrappedTokenBridge.connect(user).bridge(wrappedToken.address, originalTokenChainId, 0, user.address, false, callParams, adapterParams, { value: fee })).to.be.revertedWith("WrappedTokenBridge: invalid amount")
         })
 
         it("burns wrapped tokens", async () => {
-            await wrappedTokenBridge.registerTokens(wrappedToken.address, originalTokenChainId, originalToken.address)
+            await wrappedTokenBridge.registerToken(wrappedToken.address, originalTokenChainId, originalToken.address)
 
             // Tokens minted
             await wrappedTokenBridge.simulateNonblockingLzReceive(originalTokenChainId, createPayload())
@@ -196,9 +155,7 @@ describe("WrappedTokenBridge", () => {
             expect(await wrappedTokenBridge.totalValueLocked(originalTokenChainId, originalToken.address)).to.be.eq(amount)
 
             // Tokens burned
-            await wrappedTokenBridge
-                .connect(user)
-                .bridge(wrappedToken.address, originalTokenChainId, amount, user.address, false, callParams, adapterParams, { value: fee })
+            await wrappedTokenBridge.connect(user).bridge(wrappedToken.address, originalTokenChainId, amount, user.address, false, callParams, adapterParams, { value: fee })
 
             expect(await wrappedToken.totalSupply()).to.be.eq(0)
             expect(await wrappedToken.balanceOf(user.address)).to.be.eq(0)

@@ -20,9 +20,7 @@ describe("WrappedERC20", () => {
     })
 
     it("reverts when passing address zero in the constructor", async () => {
-        await expect(wrappedTokenFactory.deploy(constants.AddressZero, name, symbol, decimals)).to.be.revertedWith(
-            "WrappedERC20: invalid bridge"
-        )
+        await expect(wrappedTokenFactory.deploy(constants.AddressZero, name, symbol, decimals)).to.be.revertedWith("WrappedERC20: invalid bridge")
     })
 
     it("overrides the default ERC20 number of decimals with the one passed in the constructor", async () => {

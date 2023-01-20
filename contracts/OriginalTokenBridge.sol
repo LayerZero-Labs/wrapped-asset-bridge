@@ -84,7 +84,7 @@ contract OriginalTokenBridge is TokenBridgeBase {
         return lzEndpoint.estimateFees(remoteChainId, address(this), payload, useZro, adapterParams);
     }
 
-    function estimateBridgeETHFee(uint amount, address to, bool useZro, bytes calldata adapterParams) public view returns (uint nativeFee, uint zroFee) {
+    function estimateBridgeETHFee(uint amount, address to, bool useZro, bytes calldata adapterParams) external view returns (uint nativeFee, uint zroFee) {
         return estimateBridgeFee(weth, amount, to, useZro, adapterParams);
     }
 
