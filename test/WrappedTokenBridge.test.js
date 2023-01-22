@@ -80,18 +80,6 @@ describe("WrappedTokenBridge", () => {
             await expect(wrappedTokenBridge.simulateNonblockingLzReceive(originalTokenChainId, createPayload())).to.be.revertedWith("WrappedTokenBridge: token is not supported")
         })
 
-        it("reverts when globalPaused is true", async () => {
-            await wrappedTokenBridge.registerToken(wrappedToken.address, originalTokenChainId, originalToken.address)
-            await wrappedTokenBridge.setGlobalPause(true)
-            await expect(wrappedTokenBridge.simulateNonblockingLzReceive(originalTokenChainId, createPayload())).to.be.revertedWith("WrappedTokenBridge: paused")
-        })
-
-        it("reverts when token is paused", async () => {
-            await wrappedTokenBridge.registerToken(wrappedToken.address, originalTokenChainId, originalToken.address)
-            await wrappedTokenBridge.setTokenPause(wrappedToken.address, true)
-            await expect(wrappedTokenBridge.simulateNonblockingLzReceive(originalTokenChainId, createPayload())).to.be.revertedWith("WrappedTokenBridge: paused")
-        })
-
         it("mints wrapped tokens", async () => {
             await wrappedTokenBridge.registerToken(wrappedToken.address, originalTokenChainId, originalToken.address)
             await wrappedTokenBridge.simulateNonblockingLzReceive(originalTokenChainId, createPayload())
@@ -108,26 +96,12 @@ describe("WrappedTokenBridge", () => {
             fee = (await wrappedTokenBridge.estimateBridgeFee(wrappedToken.address, originalTokenChainId, amount, user.address, false, false, adapterParams)).nativeFee
         })
 
-        it("reverts when globalPaused is true", async () => {
-            await wrappedTokenBridge.setGlobalPause(true)
-            await expect(wrappedTokenBridge.connect(user).bridge(wrappedToken.address, originalTokenChainId, amount, user.address, false, callParams, adapterParams, { value: fee })).to.be.revertedWith("TokenBridgeBase: paused")
-        })
-
-        it("reverts when token is paused", async () => {
-            await wrappedTokenBridge.setTokenPause(wrappedToken.address, true)
-            await expect(wrappedTokenBridge.connect(user).bridge(wrappedToken.address, originalTokenChainId, amount, user.address, false, callParams, adapterParams, { value: fee })).to.be.revertedWith("TokenBridgeBase: paused")
-        })
-
         it("reverts when token is address zero", async () => {
             await expect(wrappedTokenBridge.connect(user).bridge(constants.AddressZero, originalTokenChainId, amount, user.address, false, callParams, adapterParams, { value: fee })).to.be.revertedWith("WrappedTokenBridge: invalid token")
         })
 
         it("reverts when to is address zero", async () => {
-            await expect(
-                wrappedTokenBridge.connect(user).bridge(wrappedToken.address, originalTokenChainId, amount, constants.AddressZero, false, callParams, adapterParams, {
-                    value: fee,
-                })
-            ).to.be.revertedWith("WrappedTokenBridge: invalid to")
+            await expect(wrappedTokenBridge.connect(user).bridge(wrappedToken.address, originalTokenChainId, amount, constants.AddressZero, false, callParams, adapterParams, { value: fee })).to.be.revertedWith("WrappedTokenBridge: invalid to")
         })
 
         it("reverts when useCustomAdapterParams is false and non-empty adapterParams are passed", async () => {

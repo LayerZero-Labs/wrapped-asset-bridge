@@ -14,9 +14,6 @@ contract OriginalTokenBridge is TokenBridgeBase {
     /// @notice Total bps representing 100%
     uint16 public constant TOTAL_BPS = 10000;
 
-    /// @notice The amount of time the owner needs to wait to withdraw locked funds after enabling emergency withdraw
-    uint public constant EMERGENCY_WITHDRAW_DELAY = 1 weeks;
-
     /// @notice Tokens that can be bridged to the remote chain
     mapping(address => bool) public supportedTokens;
 
@@ -29,12 +26,6 @@ contract OriginalTokenBridge is TokenBridgeBase {
     /// @notice An optional fee charged on withdrawal, expressed in bps. E.g., 1bps = 0.01%
     uint16 public withdrawalFeeBps;
 
-    /// @notice Indicates whether emergency withdraw is enabled by the owner
-    bool public emergencyWithdrawEnabled;
-
-    /// @notice The time when the owner can emergency withdraw locked funds
-    uint public emergencyWithdrawTime;
-
     address public immutable weth;
 
     event SendToken(address token, address from, address to, uint amount);
@@ -42,14 +33,7 @@ contract OriginalTokenBridge is TokenBridgeBase {
     event SetRemoteChainId(uint16 remoteChainId);
     event SetWithdrawalFeeBps(uint16 withdrawalFeeBps);
     event RegisterToken(address token);
-    event EnableEmergencyWithdraw(bool enabled, uint unlockTime);
     event WithdrawFee(address indexed token, address to, uint amount);
-    event WithdrawTotalValueLocked(address indexed token, address to, uint amount);
-
-    modifier emergencyWithdrawUnlocked() {
-        require(emergencyWithdrawEnabled && block.timestamp >= emergencyWithdrawTime, "OriginalTokenBridge: emergency withdraw locked");
-        _;
-    }
 
     constructor(address _endpoint, uint16 _remoteChainId, address _weth) TokenBridgeBase(_endpoint) {
         require(_weth != address(0), "OriginalTokenBridge: invalid WETH address");
@@ -70,7 +54,7 @@ contract OriginalTokenBridge is TokenBridgeBase {
     }
 
     function setWithdrawalFeeBps(uint16 _withdrawalFeeBps) external onlyOwner {
-        require(_withdrawalFeeBps <= TOTAL_BPS, "OriginalTokenBridge: invalid withdrawal fee");
+        require(_withdrawalFeeBps < TOTAL_BPS, "OriginalTokenBridge: invalid withdrawal fee bps");
         withdrawalFeeBps = _withdrawalFeeBps;
         emit SetWithdrawalFeeBps(_withdrawalFeeBps);
     }
@@ -90,7 +74,7 @@ contract OriginalTokenBridge is TokenBridgeBase {
 
     /// @notice Bridges ERC20 to the remote chain
     /// @dev Locks an ERC20 on the source chain and sends LZ message to the remote chain to mint a wrapped token
-    function bridge(address token, uint amount, address to, LzLib.CallParams calldata callParams, bytes memory adapterParams) external payable whenNotPaused(token) nonReentrant {
+    function bridge(address token, uint amount, address to, LzLib.CallParams calldata callParams, bytes memory adapterParams) external payable nonReentrant {
         require(token != address(0), "OriginalTokenBridge: invalid token");
         require(to != address(0), "OriginalTokenBridge: invalid to");
         require(supportedTokens[token], "OriginalTokenBridge: token is not supported");
@@ -111,7 +95,7 @@ contract OriginalTokenBridge is TokenBridgeBase {
 
     /// @notice Bridges ETH to the remote chain
     /// @dev Locks WETH on the source chain and sends LZ message to the remote chain to mint a wrapped token
-    function bridgeETH(uint amount, address to, LzLib.CallParams calldata callParams, bytes memory adapterParams) external payable whenNotPaused(weth) nonReentrant {
+    function bridgeETH(uint amount, address to, LzLib.CallParams calldata callParams, bytes memory adapterParams) external payable nonReentrant {
         // gas savings
         address _weth = weth;
 
@@ -128,30 +112,12 @@ contract OriginalTokenBridge is TokenBridgeBase {
         emit SendToken(_weth, msg.sender, to, amount);
     }
 
-    function enableEmergencyWithdraw(bool enabled) external onlyOwner {
-        emergencyWithdrawEnabled = enabled;
-        // overrides an existing lock time
-        emergencyWithdrawTime = enabled ? block.timestamp + EMERGENCY_WITHDRAW_DELAY : 0;
-        emit EnableEmergencyWithdraw(enabled, emergencyWithdrawTime);
-    }
-
     function withdrawFee(address token, address to, uint amount) public onlyOwner {
         uint fee = accruedFee(token);
         require(amount <= fee, "OriginalTokenBridge: not enough fees collected");
 
         IERC20(token).safeTransfer(to, amount);
         emit WithdrawFee(token, to, amount);
-    }
-
-    function withdrawTotalValueLocked(address token, address to, uint amount) public onlyOwner emergencyWithdrawUnlocked {
-        totalValueLocked[token] -= amount;
-        IERC20(token).safeTransfer(to, amount);
-        emit WithdrawTotalValueLocked(token, to, amount);
-    }
-
-    function emergencyWithdraw(address token, address to) external {
-        withdrawFee(token, to, accruedFee(token));
-        withdrawTotalValueLocked(token, to, totalValueLocked[token]);
     }
 
     /// @notice Receives ERC20 tokens or ETH from the remote chain
@@ -161,7 +127,6 @@ contract OriginalTokenBridge is TokenBridgeBase {
 
         (uint8 packetType, address token, address to, uint amount, bool unwrap) = abi.decode(payload, (uint8, address, address, uint, bool));
         require(packetType == PT_UNWRAP, "OriginalTokenBridge: unknown packet type");
-        require(!globalPaused && !pausedTokens[token], "OriginalTokenBridge: paused");
         require(supportedTokens[token], "OriginalTokenBridge: token is not supported");
 
         totalValueLocked[token] -= amount;

@@ -85,8 +85,8 @@ describe("OriginalTokenBridge", () => {
 
     describe("setWithdrawalFeeBps", () => {
         const withdrawalFeeBps = 10
-        it("reverts when fee bps is greater than 100%", async () => {
-            await expect(originalTokenBridge.setWithdrawalFeeBps(10001)).to.be.revertedWith("OriginalTokenBridge: invalid withdrawal fee")
+        it("reverts when fee bps is greater than or equal to 100%", async () => {
+            await expect(originalTokenBridge.setWithdrawalFeeBps(10000)).to.be.revertedWith("OriginalTokenBridge: invalid withdrawal fee")
         })
 
         it("reverts when called by non owner", async () => {
@@ -96,32 +96,6 @@ describe("OriginalTokenBridge", () => {
         it("sets withdrawal fee bps", async () => {
             await originalTokenBridge.setWithdrawalFeeBps(withdrawalFeeBps)
             expect(await originalTokenBridge.withdrawalFeeBps()).to.be.eq(withdrawalFeeBps)
-        })
-    })
-
-    describe("setGlobalPause", () => {
-        it("reverts when called by non owner", async () => {
-            await expect(originalTokenBridge.connect(user).setGlobalPause(true)).to.be.revertedWith("Ownable: caller is not the owner")
-        })
-
-        it("sets global pause", async () => {
-            await originalTokenBridge.setGlobalPause(true)
-            expect(await originalTokenBridge.globalPaused()).to.be.true
-        })
-    })
-
-    describe("setTokenPause", () => {
-        it("reverts when called by non owner", async () => {
-            await expect(originalTokenBridge.connect(user).setTokenPause(originalToken.address, true)).to.be.revertedWith("Ownable: caller is not the owner")
-        })
-
-        it("reverts when passing address zero", async () => {
-            await expect(originalTokenBridge.setTokenPause(constants.AddressZero, true)).to.be.revertedWith("TokenBridgeBase: invalid token")
-        })
-
-        it("sets token pause", async () => {
-            await originalTokenBridge.setTokenPause(originalToken.address, true)
-            expect(await originalTokenBridge.pausedTokens(originalToken.address)).to.be.true
         })
     })
 
@@ -141,17 +115,7 @@ describe("OriginalTokenBridge", () => {
         beforeEach(async () => {
             fee = (await originalTokenBridge.estimateBridgeFee(originalToken.address, amount, user.address, false, adapterParams)).nativeFee
         })
-
-        it("reverts when globalPaused is true", async () => {
-            await originalTokenBridge.setGlobalPause(true)
-            await expect(originalTokenBridge.connect(user).bridge(originalToken.address, amount, user.address, callParams, adapterParams, { value: fee })).to.be.revertedWith("TokenBridgeBase: paused")
-        })
-
-        it("reverts when token is paused", async () => {
-            await originalTokenBridge.setTokenPause(originalToken.address, true)
-            await expect(originalTokenBridge.connect(user).bridge(originalToken.address, amount, user.address, callParams, adapterParams, { value: fee })).to.be.revertedWith("TokenBridgeBase: paused")
-        })
-
+      
         it("reverts when token is address zero", async () => {
             await expect(originalTokenBridge.connect(user).bridge(constants.AddressZero, amount, user.address, callParams, adapterParams, { value: fee })).to.be.revertedWith("OriginalTokenBridge: invalid token")
         })
@@ -190,16 +154,6 @@ describe("OriginalTokenBridge", () => {
         beforeEach(async () => {
             const fee = await originalTokenBridge.estimateBridgeETHFee(amount, user.address, false, adapterParams)
             totalAmount = amount.add(fee.nativeFee)
-        })
-
-        it("reverts when globalPaused is true", async () => {
-            await originalTokenBridge.setGlobalPause(true)
-            await expect(originalTokenBridge.connect(user).bridgeETH(amount, user.address, callParams, adapterParams, { value: totalAmount })).to.be.revertedWith("TokenBridgeBase: paused")
-        })
-
-        it("reverts when WETH is paused", async () => {
-            await originalTokenBridge.setTokenPause(weth.address, true)
-            await expect(originalTokenBridge.connect(user).bridgeETH(amount, user.address, callParams, adapterParams, { value: totalAmount })).to.be.revertedWith("TokenBridgeBase: paused")
         })
 
         it("reverts when to is address zero", async () => {
@@ -252,16 +206,6 @@ describe("OriginalTokenBridge", () => {
             await expect(originalTokenBridge.simulateNonblockingLzReceive(wrappedTokenChainId, createPayload(PK_INVALID))).to.be.revertedWith("OriginalTokenBridge: unknown packet type")
         })
 
-        it("reverts when globalPaused is true", async () => {
-            await originalTokenBridge.setGlobalPause(true)
-            await expect(originalTokenBridge.simulateNonblockingLzReceive(wrappedTokenChainId, createPayload())).to.be.revertedWith("OriginalTokenBridge: paused")
-        })
-
-        it("reverts when token is paused", async () => {
-            await originalTokenBridge.setTokenPause(originalToken.address, true)
-            await expect(originalTokenBridge.simulateNonblockingLzReceive(wrappedTokenChainId, createPayload())).to.be.revertedWith("OriginalTokenBridge: paused")
-        })
-
         it("unlocks, collects withdrawal fees and transfers funds to the recipient", async () => {
             const withdrawalFeeBps = 20 // 0.2%
             const totalBps = await originalTokenBridge.TOTAL_BPS() // 100%
@@ -308,55 +252,6 @@ describe("OriginalTokenBridge", () => {
         })
     })
 
-    describe("enableEmergencyWithdraw", () => {
-        it("reverts when called by non owner", async () => {
-            await expect(originalTokenBridge.connect(user).enableEmergencyWithdraw(true)).to.be.revertedWith("Ownable: caller is not the owner")
-        })
-
-        it("enables emergency withdraw", async () => {
-            await originalTokenBridge.enableEmergencyWithdraw(true)
-            expect(await originalTokenBridge.emergencyWithdrawEnabled()).to.be.true
-            expect(await originalTokenBridge.emergencyWithdrawTime()).to.be.gt(0)
-        })
-
-        it("disables emergency withdraw", async () => {
-            await originalTokenBridge.enableEmergencyWithdraw(true)
-            expect(await originalTokenBridge.emergencyWithdrawEnabled()).to.be.true
-            expect(await originalTokenBridge.emergencyWithdrawTime()).to.be.gt(0)
-
-            await originalTokenBridge.enableEmergencyWithdraw(false)
-            expect(await originalTokenBridge.emergencyWithdrawEnabled()).to.be.false
-            expect(await originalTokenBridge.emergencyWithdrawTime()).to.be.eq(0)
-        })
-    })
-
-    describe("enableEmergencyWithdraw", () => {
-        it("reverts when called by non owner", async () => {
-            await expect(originalTokenBridge.connect(user).enableEmergencyWithdraw(true)).to.be.revertedWith("Ownable: caller is not the owner")
-        })
-
-        it("enables emergency withdraw", async () => {
-            const delay = await originalTokenBridge.EMERGENCY_WITHDRAW_DELAY()
-
-            await originalTokenBridge.enableEmergencyWithdraw(true)
-            const blockNumber = await ethers.provider.getBlockNumber()
-            const block = await ethers.provider.getBlock(blockNumber)
-
-            expect(await originalTokenBridge.emergencyWithdrawEnabled()).to.be.true
-            expect(await originalTokenBridge.emergencyWithdrawTime()).to.be.eq(block.timestamp + delay.toNumber())
-        })
-
-        it("disables emergency withdraw", async () => {
-            await originalTokenBridge.enableEmergencyWithdraw(true)
-            expect(await originalTokenBridge.emergencyWithdrawEnabled()).to.be.true
-            expect(await originalTokenBridge.emergencyWithdrawTime()).to.be.gt(0)
-
-            await originalTokenBridge.enableEmergencyWithdraw(false)
-            expect(await originalTokenBridge.emergencyWithdrawEnabled()).to.be.false
-            expect(await originalTokenBridge.emergencyWithdrawTime()).to.be.eq(0)
-        })
-    })
-
     describe("withdrawFee", () => {
         it("reverts when called by non owner", async () => {
             await expect(originalTokenBridge.connect(user).withdrawFee(originalToken.address, owner.address, 1)).to.be.revertedWith("Ownable: caller is not the owner")
@@ -380,37 +275,6 @@ describe("OriginalTokenBridge", () => {
 
             await originalTokenBridge.withdrawFee(originalToken.address, owner.address, withdrawalFee)
             expect(await originalToken.balanceOf(owner.address)).to.be.eq(withdrawalFee)
-        })
-    })
-
-    describe("emergencyWithdraw", () => {
-        it("reverts when called by non owner", async () => {
-            await expect(originalTokenBridge.connect(user).emergencyWithdraw(originalToken.address, owner.address)).to.be.revertedWith("Ownable: caller is not the owner")
-        })
-
-        it("reverts if emergency withdraw isn't enabled", async () => {
-            await expect(originalTokenBridge.emergencyWithdraw(originalToken.address, owner.address)).to.be.revertedWith("OriginalTokenBridge: emergency withdraw locked")
-        })
-
-        it("reverts if emergency withdraw time isn't reached", async () => {
-            await originalTokenBridge.enableEmergencyWithdraw(true)
-            await expect(originalTokenBridge.emergencyWithdraw(originalToken.address, owner.address)).to.be.revertedWith("OriginalTokenBridge: emergency withdraw locked")
-        })
-
-        it("withdraws total value locked", async () => {
-            const delay = await originalTokenBridge.EMERGENCY_WITHDRAW_DELAY()
-            const bridgingFee = await originalTokenBridge.estimateBridgeFee(originalToken.address, amount, user.address, false, adapterParams)
-
-            // Setup
-            await originalTokenBridge.registerToken(originalToken.address)
-            await originalToken.connect(user).approve(originalTokenBridge.address, amount)
-            await originalTokenBridge.connect(user).bridge(originalToken.address, amount, user.address, callParams, adapterParams, { value: bridgingFee.nativeFee })
-            await originalTokenBridge.enableEmergencyWithdraw(true)
-            await ethers.provider.send("evm_increaseTime", [delay.toNumber()])
-            await ethers.provider.send("evm_mine", [])
-
-            await originalTokenBridge.emergencyWithdraw(originalToken.address, owner.address)
-            expect(await originalToken.balanceOf(owner.address)).to.be.eq(amount)
         })
     })
 })

@@ -13,34 +13,10 @@ abstract contract TokenBridgeBase is NonblockingLzApp, ReentrancyGuard {
     uint8 public constant PT_UNWRAP = 1;
 
     bool public useCustomAdapterParams;
-    bool public globalPaused;
-    mapping(address => bool) public pausedTokens;
 
-    event SetGlobalPause(bool paused);
-    event SetTokenPause(address token, bool paused);
     event SetUseCustomAdapterParams(bool useCustomAdapterParams);
 
-    modifier whenNotPaused(address _token) {
-        require(!globalPaused && !pausedTokens[_token], "TokenBridgeBase: paused");
-        _;
-    }
-
     constructor(address _endpoint) NonblockingLzApp(_endpoint) {}
-
-    /// @notice Pauses or resumes sending and receiving of all tokens
-    /// @dev Can be called only by the bridge owner
-    function setGlobalPause(bool paused) external onlyOwner {
-        globalPaused = paused;
-        emit SetGlobalPause(paused);
-    }
-
-    /// @notice Pauses or resumes sending and receiving of a specified `token`
-    /// @dev Can be called only by the bridge owner
-    function setTokenPause(address token, bool paused) external onlyOwner {
-        require(token != address(0), "TokenBridgeBase: invalid token");
-        pausedTokens[token] = paused;
-        emit SetTokenPause(token, paused);
-    }
 
     /// @notice Sets the `useCustomAdapterParams` flag indicating whether the contract uses custom adapter parameters or the default ones
     /// @dev Can be called only by the bridge owner
