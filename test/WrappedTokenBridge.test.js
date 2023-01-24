@@ -62,6 +62,11 @@ describe("WrappedTokenBridge", () => {
             await expect(wrappedTokenBridge.registerToken(wrappedToken.address, originalTokenChainId, constants.AddressZero)).to.be.revertedWith("WrappedTokenBridge: invalid remote token")
         })
 
+        it("reverts if token already registered", async () => {
+            await wrappedTokenBridge.registerToken(wrappedToken.address, originalTokenChainId, originalToken.address)
+            await expect(wrappedTokenBridge.registerToken(wrappedToken.address, originalTokenChainId, originalToken.address)).to.be.revertedWith("WrappedTokenBridge: token already registered")
+        })
+
         it("registers tokens", async () => {
             await wrappedTokenBridge.registerToken(wrappedToken.address, originalTokenChainId, originalToken.address)
 
