@@ -67,7 +67,7 @@ describe("End to End", function () {
             await wrappedTokenBridge.registerToken(wrappedToken.address, ethereumChainId, ethereumERC20.address)
 
             await ethereumERC20.connect(user).approve(ethereumBridge.address, ethereumAmount)
-            const fee = await ethereumBridge.estimateBridgeFee(ethereumERC20.address, ethereumAmount, user.address, false, adapterParams)
+            const fee = await ethereumBridge.estimateBridgeFee(false, adapterParams)
             await ethereumBridge.connect(user).bridge(ethereumERC20.address, ethereumAmount, user.address, callParams, adapterParams, { value: fee.nativeFee })
         })
 
@@ -88,7 +88,7 @@ describe("End to End", function () {
                 await wrappedTokenBridge.registerToken(wrappedToken.address, polygonChainId, polygonERC20.address)
 
                 await polygonERC20.connect(user).approve(polygonBridge.address, polygonAmount)
-                const fee = await polygonBridge.estimateBridgeFee(polygonERC20.address, polygonAmount, user.address, false, adapterParams)
+                const fee = await polygonBridge.estimateBridgeFee(false, adapterParams)
                 await polygonBridge.connect(user).bridge(polygonERC20.address, polygonAmount, user.address, callParams, adapterParams, { value: fee.nativeFee })
             })
 
@@ -107,7 +107,7 @@ describe("End to End", function () {
 
             it("reverts when trying to bridge 6 wrapped tokens to Polygon", async () => {
                 const amount = polygonAmount.add(utils.parseEther("1"))
-                const fee = await wrappedTokenBridge.estimateBridgeFee(wrappedToken.address, polygonChainId, amount, user.address, false, false, adapterParams)
+                const fee = await wrappedTokenBridge.estimateBridgeFee(polygonChainId, false, adapterParams)
 
                 it("reverts when called by non owner", async () => {
                     await expect(wrappedTokenBridge.connect(user).bridge(wrappedToken.address, polygonChainId, amount, user.address, false, callParams, adapterParams, { value: fee.nativeFee })).to.be.revertedWith("WrappedTokenBridge: insufficient liquidity on the destination")
@@ -116,7 +116,7 @@ describe("End to End", function () {
 
             describe("bridge 10 wrapped ERC20 tokens to Ethereum", function () {
                 beforeEach(async () => {
-                    const fee = await wrappedTokenBridge.estimateBridgeFee(wrappedToken.address, ethereumChainId, ethereumAmount, user.address, false, false, adapterParams)
+                    const fee = await wrappedTokenBridge.estimateBridgeFee(ethereumChainId, false, adapterParams)
                     await wrappedTokenBridge.connect(user).bridge(wrappedToken.address, ethereumChainId, ethereumAmount, user.address, false, callParams, adapterParams, { value: fee.nativeFee })
                 })
 
@@ -134,7 +134,7 @@ describe("End to End", function () {
 
                 describe("bridge 5 wrapped ERC20 tokens to Polygon", function () {
                     beforeEach(async () => {
-                        const fee = await wrappedTokenBridge.estimateBridgeFee(wrappedToken.address, polygonChainId, polygonAmount, user.address, false, false, adapterParams)
+                        const fee = await wrappedTokenBridge.estimateBridgeFee(polygonChainId, false, adapterParams)
                         await wrappedTokenBridge.connect(user).bridge(wrappedToken.address, polygonChainId, polygonAmount, user.address, false, callParams, adapterParams, { value: fee.nativeFee })
                     })
 
@@ -159,7 +159,7 @@ describe("End to End", function () {
             await ethereumBridge.registerToken(weth.address)
             await wrappedTokenBridge.registerToken(wrappedToken.address, ethereumChainId, weth.address)
 
-            const fee = await ethereumBridge.estimateBridgeETHFee(ethereumAmount, user.address, false, adapterParams)
+            const fee = await ethereumBridge.estimateBridgeFee(false, adapterParams)
             await ethereumBridge.connect(user).bridgeETH(ethereumAmount, user.address, callParams, adapterParams, { value: ethereumAmount.add(fee.nativeFee) })
         })
 
@@ -174,15 +174,21 @@ describe("End to End", function () {
             expect(await wrappedTokenBridge.totalValueLocked(ethereumChainId, weth.address)).to.be.eq(ethereumAmount)
         })
 
-        describe("bridge wrapped WETH token to Ethereum", function () {
+        describe("bridge wrapped WETH token to Ethereum and collects fees", function () {
             let recipientBalanceBefore
-            const unwrap = true
+            let withdrawalFee
+            const unwrapWeth = true
             const toNumber = (bigNumber) => parseFloat(utils.formatEther(bigNumber.toString()))
 
             beforeEach(async () => {
+                const withdrawalFeeBps = 20 // 0.2%
+                const totalBps = await wrappedTokenBridge.TOTAL_BPS() // 100%
+                withdrawalFee = ethereumAmount.mul(withdrawalFeeBps).div(totalBps)
+                await wrappedTokenBridge.setWithdrawalFeeBps(withdrawalFeeBps)
+
                 recipientBalanceBefore = toNumber(await ethers.provider.getBalance(user.address))
-                const fee = await wrappedTokenBridge.estimateBridgeFee(wrappedToken.address, ethereumChainId, ethereumAmount, user.address, unwrap, false, adapterParams)
-                await wrappedTokenBridge.connect(user).bridge(wrappedToken.address, ethereumChainId, ethereumAmount, user.address, unwrap, callParams, adapterParams, { value: fee.nativeFee })
+                const fee = await wrappedTokenBridge.estimateBridgeFee(ethereumChainId, false, adapterParams)
+                await wrappedTokenBridge.connect(user).bridge(wrappedToken.address, ethereumChainId, ethereumAmount, user.address, unwrapWeth, callParams, adapterParams, { value: fee.nativeFee })
             })
 
             it("burns wrapped tokens", async () => {
@@ -193,7 +199,7 @@ describe("End to End", function () {
 
             it("unlocks ETH", async () => {
                 expect(await ethereumBridge.totalValueLocked(weth.address)).to.be.eq(0)
-                expect(await weth.balanceOf(ethereumBridge.address)).to.be.eq(0)
+                expect(await weth.balanceOf(ethereumBridge.address)).to.be.eq(withdrawalFee)
                 expect(await weth.balanceOf(user.address)).to.be.eq(0)
                 expect(toNumber(await ethers.provider.getBalance(user.address))).to.be.gt(recipientBalanceBefore)
             })

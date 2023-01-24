@@ -6,7 +6,7 @@ describe("OriginalTokenBridge", () => {
     const originalTokenChainId = 0
     const wrappedTokenChainId = 1
     const amount = utils.parseEther("10")
-    const pkUnwrap = 1
+    const pkUnlock = 1
 
     let owner, user
     let originalToken, weth
@@ -14,7 +14,10 @@ describe("OriginalTokenBridge", () => {
     let originalTokenEndpoint, originalTokenBridgeFactory
     let callParams, adapterParams
 
-    const createPayload = (pk = pkUnwrap, token = originalToken.address, unwrap = false) => utils.defaultAbiCoder.encode(["uint8", "address", "address", "uint256", "bool"], [pk, token, user.address, amount, unwrap])
+    const createPayload = (pk = pkUnlock, token = originalToken.address, withdrawalAmount = amount, totalAmount = amount, unwrapWeth = false) => utils.defaultAbiCoder.encode(
+        ["uint8", "address", "address", "uint256", "uint256", "bool"], 
+        [pk, token, user.address, withdrawalAmount, totalAmount, unwrapWeth]
+    )
 
     beforeEach(async () => {
         [owner, user] = await ethers.getSigners()
@@ -81,23 +84,7 @@ describe("OriginalTokenBridge", () => {
             await originalTokenBridge.setRemoteChainId(newRemoteChainId)
             expect(await originalTokenBridge.remoteChainId()).to.be.eq(newRemoteChainId)
         })
-    })
-
-    describe("setWithdrawalFeeBps", () => {
-        const withdrawalFeeBps = 10
-        it("reverts when fee bps is greater than or equal to 100%", async () => {
-            await expect(originalTokenBridge.setWithdrawalFeeBps(10000)).to.be.revertedWith("OriginalTokenBridge: invalid withdrawal fee")
-        })
-
-        it("reverts when called by non owner", async () => {
-            await expect(originalTokenBridge.connect(user).setWithdrawalFeeBps(withdrawalFeeBps)).to.be.revertedWith("Ownable: caller is not the owner")
-        })
-
-        it("sets withdrawal fee bps", async () => {
-            await originalTokenBridge.setWithdrawalFeeBps(withdrawalFeeBps)
-            expect(await originalTokenBridge.withdrawalFeeBps()).to.be.eq(withdrawalFeeBps)
-        })
-    })
+    })   
 
     describe("setUseCustomAdapterParams", () => {
         it("reverts when called by non owner", async () => {
@@ -113,13 +100,10 @@ describe("OriginalTokenBridge", () => {
     describe("bridge", () => {
         let fee
         beforeEach(async () => {
-            fee = (await originalTokenBridge.estimateBridgeFee(originalToken.address, amount, user.address, false, adapterParams)).nativeFee
+            fee = (await originalTokenBridge.estimateBridgeFee(false, adapterParams)).nativeFee
+            await originalToken.connect(user).approve(originalTokenBridge.address, amount)
         })
-      
-        it("reverts when token is address zero", async () => {
-            await expect(originalTokenBridge.connect(user).bridge(constants.AddressZero, amount, user.address, callParams, adapterParams, { value: fee })).to.be.revertedWith("OriginalTokenBridge: invalid token")
-        })
-
+            
         it("reverts when to is address zero", async () => {
             await expect(originalTokenBridge.connect(user).bridge(originalToken.address, amount, constants.AddressZero, callParams, adapterParams, { value: fee })).to.be.revertedWith("OriginalTokenBridge: invalid to")
         })
@@ -140,8 +124,7 @@ describe("OriginalTokenBridge", () => {
         })
 
         it("locks tokens in the contract", async () => {
-            await originalTokenBridge.registerToken(originalToken.address)
-            await originalToken.connect(user).approve(originalTokenBridge.address, amount)
+            await originalTokenBridge.registerToken(originalToken.address)            
             await originalTokenBridge.connect(user).bridge(originalToken.address, amount, user.address, callParams, adapterParams, { value: fee })
 
             expect(await originalTokenBridge.totalValueLocked(originalToken.address)).to.be.eq(amount)
@@ -152,8 +135,8 @@ describe("OriginalTokenBridge", () => {
     describe("bridgeETH", () => {
         let totalAmount
         beforeEach(async () => {
-            const fee = await originalTokenBridge.estimateBridgeETHFee(amount, user.address, false, adapterParams)
-            totalAmount = amount.add(fee.nativeFee)
+            const fee = (await originalTokenBridge.estimateBridgeFee(false, adapterParams)).nativeFee
+            totalAmount = amount.add(fee)
         })
 
         it("reverts when to is address zero", async () => {
@@ -161,7 +144,7 @@ describe("OriginalTokenBridge", () => {
         })
 
         it("reverts when WETH is not registered", async () => {
-            await expect(originalTokenBridge.connect(user).bridgeETH(amount, user.address, callParams, adapterParams, { value: totalAmount })).to.be.revertedWith("OriginalTokenBridge: weth is not supported")
+            await expect(originalTokenBridge.connect(user).bridgeETH(amount, user.address, callParams, adapterParams, { value: totalAmount })).to.be.revertedWith("OriginalTokenBridge: token is not supported")
         })
 
         it("reverts when useCustomAdapterParams is false and non-empty adapterParams are passed", async () => {
@@ -184,7 +167,7 @@ describe("OriginalTokenBridge", () => {
 
         it("reverts when value is less than amount", async () => {
             await originalTokenBridge.registerToken(weth.address)
-            await expect(originalTokenBridge.connect(user).bridgeETH(amount, user.address, callParams, adapterParams, { value: 0 })).to.be.revertedWith("OriginalTokenBridge: not enough value sent")
+            await expect(originalTokenBridge.connect(user).bridgeETH(amount, user.address, callParams, adapterParams, { value: 0 })).to.be.reverted
         })
 
         it("locks WETH in the contract", async () => {
@@ -207,33 +190,31 @@ describe("OriginalTokenBridge", () => {
         })
 
         it("unlocks, collects withdrawal fees and transfers funds to the recipient", async () => {
-            const withdrawalFeeBps = 20 // 0.2%
-            const totalBps = await originalTokenBridge.TOTAL_BPS() // 100%
-            const bridgingFee = await originalTokenBridge.estimateBridgeFee(originalToken.address, amount, user.address, false, adapterParams)
-            const withdrawalFee = amount.mul(withdrawalFeeBps).div(totalBps)
+            const bridgingFee = (await originalTokenBridge.estimateBridgeFee(false, adapterParams)).nativeFee
+            const withdrawalFee = amount.div(100)
+            const withdrawalAmount = amount.sub(withdrawalFee)
 
             // Setup
             await originalTokenBridge.registerToken(originalToken.address)
             await originalToken.connect(user).approve(originalTokenBridge.address, amount)
-            await originalTokenBridge.setWithdrawalFeeBps(withdrawalFeeBps)
 
             // Bridge
-            await originalTokenBridge.connect(user).bridge(originalToken.address, amount, user.address, callParams, adapterParams, { value: bridgingFee.nativeFee })
+            await originalTokenBridge.connect(user).bridge(originalToken.address, amount, user.address, callParams, adapterParams, { value: bridgingFee })
 
             expect(await originalToken.balanceOf(user.address)).to.be.eq(0)
             expect(await originalToken.balanceOf(originalTokenBridge.address)).to.be.eq(amount)
 
             // Receive
-            await originalTokenBridge.simulateNonblockingLzReceive(wrappedTokenChainId, createPayload())
+            await originalTokenBridge.simulateNonblockingLzReceive(wrappedTokenChainId, createPayload(pkUnlock, originalToken.address, withdrawalAmount, amount))
 
             expect(await originalTokenBridge.totalValueLocked(originalToken.address)).to.be.eq(0)
             expect(await originalToken.balanceOf(originalTokenBridge.address)).to.be.eq(withdrawalFee)
-            expect(await originalToken.balanceOf(user.address)).to.be.eq(amount.sub(withdrawalFee))
+            expect(await originalToken.balanceOf(user.address)).to.be.eq(withdrawalAmount)
         })
 
         it("unlocks WETH and transfers ETH to the recipient", async () => {
-            const bridgingFee = await originalTokenBridge.estimateBridgeETHFee(amount, user.address, false, adapterParams)
-            totalAmount = amount.add(bridgingFee.nativeFee)
+            const bridgingFee = (await originalTokenBridge.estimateBridgeFee(false, adapterParams)).nativeFee
+            totalAmount = amount.add(bridgingFee)
 
             // Setup
             await originalTokenBridge.registerToken(weth.address)
@@ -243,7 +224,7 @@ describe("OriginalTokenBridge", () => {
             const recipientBalanceBefore = await ethers.provider.getBalance(user.address)
 
             // Receive
-            await originalTokenBridge.simulateNonblockingLzReceive(wrappedTokenChainId, createPayload(pkUnwrap, weth.address, true))
+            await originalTokenBridge.simulateNonblockingLzReceive(wrappedTokenChainId, createPayload(pkUnlock, weth.address, amount, amount, true))
 
             expect(await originalTokenBridge.totalValueLocked(weth.address)).to.be.eq(0)
             expect(await weth.balanceOf(originalTokenBridge.address)).to.be.eq(0)
@@ -262,19 +243,18 @@ describe("OriginalTokenBridge", () => {
         })
 
         it("withdraws fees", async () => {
-            const withdrawalFeeBps = 20 // 0.2%
-            const totalBps = await originalTokenBridge.TOTAL_BPS() // 100%
-            const bridgingFee = await originalTokenBridge.estimateBridgeFee(originalToken.address, amount, user.address, false, adapterParams)
-            const withdrawalFee = amount.mul(withdrawalFeeBps).div(totalBps)
+            const bridgingFee = (await originalTokenBridge.estimateBridgeFee(false, adapterParams)).nativeFee
+            const withdrawFee = amount.div(100)
+            const withdrawAmount = amount.sub(withdrawFee)
 
             await originalTokenBridge.registerToken(originalToken.address)
             await originalToken.connect(user).approve(originalTokenBridge.address, amount)
-            await originalTokenBridge.setWithdrawalFeeBps(withdrawalFeeBps)
-            await originalTokenBridge.connect(user).bridge(originalToken.address, amount, user.address, callParams, adapterParams, { value: bridgingFee.nativeFee })
-            await originalTokenBridge.simulateNonblockingLzReceive(wrappedTokenChainId, createPayload())
 
-            await originalTokenBridge.withdrawFee(originalToken.address, owner.address, withdrawalFee)
-            expect(await originalToken.balanceOf(owner.address)).to.be.eq(withdrawalFee)
+            await originalTokenBridge.connect(user).bridge(originalToken.address, amount, user.address, callParams, adapterParams, { value: bridgingFee })
+            await originalTokenBridge.simulateNonblockingLzReceive(wrappedTokenChainId, createPayload(pkUnlock, originalToken.address, withdrawAmount, amount))
+
+            await originalTokenBridge.withdrawFee(originalToken.address, owner.address, withdrawFee)
+            expect(await originalToken.balanceOf(owner.address)).to.be.eq(withdrawFee)
         })
     })
 })

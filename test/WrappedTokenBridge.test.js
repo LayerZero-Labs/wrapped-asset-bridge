@@ -6,7 +6,7 @@ describe("WrappedTokenBridge", () => {
     const originalTokenChainId = 0
     const wrappedTokenChainId = 1
     const amount = utils.parseEther("10")
-    const pkWrap = 0
+    const pkMint = 0
 
     let owner, user
     let originalToken, wrappedToken
@@ -14,7 +14,7 @@ describe("WrappedTokenBridge", () => {
     let wrappedTokenEndpoint, wrappedTokenBridgeFactory
     let callParams, adapterParams
 
-    const createPayload = (pk = pkWrap, token = originalToken.address) => utils.defaultAbiCoder.encode(["uint8", "address", "address", "uint256"], [pk, token, user.address, amount])
+    const createPayload = (pk = pkMint, token = originalToken.address) => utils.defaultAbiCoder.encode(["uint8", "address", "address", "uint256"], [pk, token, user.address, amount])
 
     beforeEach(async () => {
         [owner, user] = await ethers.getSigners()
@@ -70,6 +70,22 @@ describe("WrappedTokenBridge", () => {
         })
     })
 
+    describe("setWithdrawalFeeBps", () => {
+        const withdrawalFeeBps = 10
+        it("reverts when fee bps is greater than or equal to 100%", async () => {
+            await expect(wrappedTokenBridge.setWithdrawalFeeBps(10000)).to.be.revertedWith("WrappedTokenBridge: invalid withdrawal fee")
+        })
+
+        it("reverts when called by non owner", async () => {
+            await expect(wrappedTokenBridge.connect(user).setWithdrawalFeeBps(withdrawalFeeBps)).to.be.revertedWith("Ownable: caller is not the owner")
+        })
+
+        it("sets withdrawal fee bps", async () => {
+            await wrappedTokenBridge.setWithdrawalFeeBps(withdrawalFeeBps)
+            expect(await wrappedTokenBridge.withdrawalFeeBps()).to.be.eq(withdrawalFeeBps)
+        })
+    })
+
     describe("_nonblockingLzReceive", () => {
         it("reverts when payload has incorrect packet type", async () => {
             const pkInvalid = 1
@@ -93,7 +109,7 @@ describe("WrappedTokenBridge", () => {
     describe("bridge", () => {
         let fee
         beforeEach(async () => {
-            fee = (await wrappedTokenBridge.estimateBridgeFee(wrappedToken.address, originalTokenChainId, amount, user.address, false, false, adapterParams)).nativeFee
+            fee = (await wrappedTokenBridge.estimateBridgeFee(originalTokenChainId, false, adapterParams)).nativeFee
         })
 
         it("reverts when token is address zero", async () => {

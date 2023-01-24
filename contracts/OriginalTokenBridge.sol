@@ -11,9 +11,6 @@ import {IWETH} from "./interfaces/IWETH.sol";
 contract OriginalTokenBridge is TokenBridgeBase {
     using SafeERC20 for IERC20;
 
-    /// @notice Total bps representing 100%
-    uint16 public constant TOTAL_BPS = 10000;
-
     /// @notice Tokens that can be bridged to the remote chain
     mapping(address => bool) public supportedTokens;
 
@@ -21,17 +18,14 @@ contract OriginalTokenBridge is TokenBridgeBase {
     mapping(address => uint) public totalValueLocked;
 
     /// @notice LayerZero id of the remote chain where wrapped tokens are minted
-    uint16 public remoteChainId;
+    uint16 public remoteChainId;   
 
-    /// @notice An optional fee charged on withdrawal, expressed in bps. E.g., 1bps = 0.01%
-    uint16 public withdrawalFeeBps;
-
+    /// @notice Address of the wrapped native gas token (e.g. WETH, WBNB, WMATIC)
     address public immutable weth;
 
     event SendToken(address token, address from, address to, uint amount);
     event ReceiveToken(address token, address to, uint amount);
-    event SetRemoteChainId(uint16 remoteChainId);
-    event SetWithdrawalFeeBps(uint16 withdrawalFeeBps);
+    event SetRemoteChainId(uint16 remoteChainId);    
     event RegisterToken(address token);
     event WithdrawFee(address indexed token, address to, uint amount);
 
@@ -51,65 +45,47 @@ contract OriginalTokenBridge is TokenBridgeBase {
     function setRemoteChainId(uint16 _remoteChainId) external onlyOwner {
         remoteChainId = _remoteChainId;
         emit SetRemoteChainId(_remoteChainId);
-    }
-
-    function setWithdrawalFeeBps(uint16 _withdrawalFeeBps) external onlyOwner {
-        require(_withdrawalFeeBps < TOTAL_BPS, "OriginalTokenBridge: invalid withdrawal fee bps");
-        withdrawalFeeBps = _withdrawalFeeBps;
-        emit SetWithdrawalFeeBps(_withdrawalFeeBps);
-    }
+    }   
 
     function accruedFee(address token) public view returns (uint) {
         return IERC20(token).balanceOf(address(this)) - totalValueLocked[token];
     }
 
-    function estimateBridgeFee(address token, uint amount, address to, bool useZro, bytes calldata adapterParams) public view returns (uint nativeFee, uint zroFee) {
-        bytes memory payload = abi.encode(PT_WRAP, token, to, amount);
+    function estimateBridgeFee(bool useZro, bytes calldata adapterParams) public view returns (uint nativeFee, uint zroFee) {
+        // Only the payload format matters when estimating fee, not the actual data
+        bytes memory payload = abi.encode(PT_MINT, address(this), address(this), 0);
         return lzEndpoint.estimateFees(remoteChainId, address(this), payload, useZro, adapterParams);
-    }
-
-    function estimateBridgeETHFee(uint amount, address to, bool useZro, bytes calldata adapterParams) external view returns (uint nativeFee, uint zroFee) {
-        return estimateBridgeFee(weth, amount, to, useZro, adapterParams);
     }
 
     /// @notice Bridges ERC20 to the remote chain
     /// @dev Locks an ERC20 on the source chain and sends LZ message to the remote chain to mint a wrapped token
     function bridge(address token, uint amount, address to, LzLib.CallParams calldata callParams, bytes memory adapterParams) external payable nonReentrant {
-        require(token != address(0), "OriginalTokenBridge: invalid token");
-        require(to != address(0), "OriginalTokenBridge: invalid to");
-        require(supportedTokens[token], "OriginalTokenBridge: token is not supported");
-        _checkAdapterParams(remoteChainId, PT_WRAP, adapterParams);
-
-        // support tokens with transfer fee
+        // Supports tokens with transfer fee
         uint balanceBefore = IERC20(token).balanceOf(address(this));
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         uint balanceAfter = IERC20(token).balanceOf(address(this));
         amount = balanceAfter - balanceBefore;
-        require(amount > 0, "OriginalTokenBridge: invalid amount");
 
-        totalValueLocked[token] += amount;
-        bytes memory payload = abi.encode(PT_WRAP, token, to, amount);
-        _lzSend(remoteChainId, payload, callParams.refundAddress, callParams.zroPaymentAddress, adapterParams, msg.value);
-        emit SendToken(token, msg.sender, to, amount);
+        _bridge(token, amount, to, msg.value, callParams, adapterParams);
     }
 
     /// @notice Bridges ETH to the remote chain
     /// @dev Locks WETH on the source chain and sends LZ message to the remote chain to mint a wrapped token
     function bridgeETH(uint amount, address to, LzLib.CallParams calldata callParams, bytes memory adapterParams) external payable nonReentrant {
-        // gas savings
-        address _weth = weth;
+        IWETH(weth).deposit{value: amount}();
+        _bridge(weth, amount, to, msg.value - amount, callParams, adapterParams);
+    }
 
+    function _bridge(address token, uint amount, address to, uint nativeFee, LzLib.CallParams calldata callParams, bytes memory adapterParams) private {
         require(to != address(0), "OriginalTokenBridge: invalid to");
-        require(supportedTokens[_weth], "OriginalTokenBridge: weth is not supported");
+        require(supportedTokens[token], "OriginalTokenBridge: token is not supported");
         require(amount > 0, "OriginalTokenBridge: invalid amount");
-        require(msg.value >= amount, "OriginalTokenBridge: not enough value sent");
-        _checkAdapterParams(remoteChainId, PT_WRAP, adapterParams);
+        _checkAdapterParams(remoteChainId, PT_MINT, adapterParams);
 
-        IWETH(_weth).deposit{value: amount}();
-        totalValueLocked[_weth] += amount;
-        bytes memory payload = abi.encode(PT_WRAP, _weth, to, amount);
-        _lzSend(remoteChainId, payload, callParams.refundAddress, callParams.zroPaymentAddress, adapterParams, msg.value - amount);
-        emit SendToken(_weth, msg.sender, to, amount);
+        totalValueLocked[token] += amount;
+        bytes memory payload = abi.encode(PT_MINT, token, to, amount);
+        _lzSend(remoteChainId, payload, callParams.refundAddress, callParams.zroPaymentAddress, adapterParams, nativeFee);
+        emit SendToken(token, msg.sender, to, amount);
     }
 
     function withdrawFee(address token, address to, uint amount) public onlyOwner {
@@ -125,25 +101,20 @@ contract OriginalTokenBridge is TokenBridgeBase {
     function _nonblockingLzReceive(uint16 srcChainId, bytes memory, uint64, bytes memory payload) internal virtual override {
         require(srcChainId == remoteChainId, "OriginalTokenBridge: invalid source chain id");
 
-        (uint8 packetType, address token, address to, uint amount, bool unwrap) = abi.decode(payload, (uint8, address, address, uint, bool));
-        require(packetType == PT_UNWRAP, "OriginalTokenBridge: unknown packet type");
+        (uint8 packetType, address token, address to, uint withdrawalAmount, uint totalAmount, bool unwrapWeth) = abi.decode(payload, (uint8, address, address, uint, uint, bool));
+        require(packetType == PT_UNLOCK, "OriginalTokenBridge: unknown packet type");
         require(supportedTokens[token], "OriginalTokenBridge: token is not supported");
 
-        totalValueLocked[token] -= amount;
+        totalValueLocked[token] -= totalAmount;       
 
-        if (withdrawalFeeBps > 0) {
-            uint withdrawalFee = (amount * withdrawalFeeBps) / TOTAL_BPS;
-            amount -= withdrawalFee;
-        }
-
-        if (token == weth && unwrap) {
-            IWETH(weth).withdraw(amount);
-            (bool success, ) = payable(to).call{value: amount}("");
+        if (token == weth && unwrapWeth) {
+            IWETH(weth).withdraw(withdrawalAmount);
+            (bool success, ) = payable(to).call{value: withdrawalAmount}("");
             require(success, "OriginalTokenBridge: failed to send");
-            emit ReceiveToken(address(0), to, amount);
+            emit ReceiveToken(address(0), to, withdrawalAmount);
         } else {
-            IERC20(token).safeTransfer(to, amount);
-            emit ReceiveToken(token, to, amount);
+            IERC20(token).safeTransfer(to, withdrawalAmount);
+            emit ReceiveToken(token, to, withdrawalAmount);
         }
     }
 

@@ -6,11 +6,11 @@ import {NonblockingLzApp} from "@layerzerolabs/solidity-examples/contracts/lzApp
 
 /// @dev An abstract contract containing a common functionality used by OriginalTokenBridge and WrappedTokenBridge
 abstract contract TokenBridgeBase is NonblockingLzApp, ReentrancyGuard {
-    /// @notice A packet type used to identify messages sent from an original token chain when an original token is locked
-    uint8 public constant PT_WRAP = 0;
+    /// @notice A packet type used to identify messages requesting minting of wrapped tokens
+    uint8 public constant PT_MINT = 0;
 
-    /// @notice A packet type used to identify messages sent from a wrapped token chain when a wrapped token is burnt
-    uint8 public constant PT_UNWRAP = 1;
+    /// @notice A packet type used to identify messages requesting unlocking of original tokens
+    uint8 public constant PT_UNLOCK = 1;
 
     bool public useCustomAdapterParams;
 
