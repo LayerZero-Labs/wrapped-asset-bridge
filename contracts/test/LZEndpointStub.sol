@@ -26,7 +26,7 @@ contract LayerZeroEndpointStub is ILayerZeroEndpoint {
     }
 
     function estimateFees(uint16, address, bytes calldata, bool, bytes calldata) external pure returns (uint nativeFee, uint zroFee) {
-        nativeFee = 0;
+        nativeFee = 10000;
         zroFee = 0;
     }
 

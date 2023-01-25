@@ -167,7 +167,7 @@ describe("OriginalTokenBridge", () => {
 
         it("reverts when value is less than amount", async () => {
             await originalTokenBridge.registerToken(weth.address)
-            await expect(originalTokenBridge.connect(user).bridgeETH(amount, user.address, callParams, adapterParams, { value: 0 })).to.be.reverted
+            await expect(originalTokenBridge.connect(user).bridgeETH(amount, user.address, callParams, adapterParams, { value: 0 })).to.be.revertedWith("OriginalTokenBridge: not enough value sent")
         })
 
         it("locks WETH in the contract", async () => {

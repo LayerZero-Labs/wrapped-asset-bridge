@@ -72,6 +72,7 @@ contract OriginalTokenBridge is TokenBridgeBase {
     /// @notice Bridges ETH to the remote chain
     /// @dev Locks WETH on the source chain and sends LZ message to the remote chain to mint a wrapped token
     function bridgeETH(uint amount, address to, LzLib.CallParams calldata callParams, bytes memory adapterParams) external payable nonReentrant {
+        require(msg.value > amount, "OriginalTokenBridge: not enough value sent");
         IWETH(weth).deposit{value: amount}();
         _bridge(weth, amount, to, msg.value - amount, callParams, adapterParams);
     }

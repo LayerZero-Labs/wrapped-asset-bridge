@@ -36,7 +36,7 @@ contract WrappedTokenBridge is TokenBridgeBase {
     function registerToken(address localToken, uint16 remoteChainId, address remoteToken) external onlyOwner {
         require(localToken != address(0), "WrappedTokenBridge: invalid local token");
         require(remoteToken != address(0), "WrappedTokenBridge: invalid remote token");
-        require(localToRemote[localToken][remoteChainId] == address(0), "WrappedTokenBridge: token already registered");
+        require(localToRemote[localToken][remoteChainId] == address(0) && remoteToLocal[remoteToken][remoteChainId] == address(0), "WrappedTokenBridge: token already registered");
 
         localToRemote[localToken][remoteChainId] = remoteToken;
         remoteToLocal[remoteToken][remoteChainId] = localToken;
