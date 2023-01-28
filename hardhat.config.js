@@ -115,7 +115,7 @@ module.exports = {
       accounts: accounts(),
     },
     'bsc-testnet': {
-      url: 'https://data-seed-prebsc-1-s1.binance.org:8545/',
+      url: 'https://endpoints.omniatech.io/v1/bsc/testnet/public',
       chainId: 97,
       accounts: accounts(),
     },
@@ -142,6 +142,11 @@ module.exports = {
     'fantom-testnet': {
       url: `https://rpc.testnet.fantom.network/`,
       chainId: 4002,
+      accounts: accounts(),
+    },
+    'coredao-testnet': {
+      url: 'https://rpc.test.btcs.network/',
+      chainId: 1115,
       accounts: accounts(),
     }
   }

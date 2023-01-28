@@ -15,6 +15,7 @@
     "mumbai",
     "arbitrum-goerli",
     "optimism-goerli",
-    "fantom-testnet"
+    "fantom-testnet",
+    "coredao-testnet"
   ]
 }
