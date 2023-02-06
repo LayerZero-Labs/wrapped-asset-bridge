@@ -91,7 +91,7 @@ describe("OriginalTokenBridge", () => {
             await expect(originalTokenBridge.connect(user).setUseCustomAdapterParams(true)).to.be.revertedWith("Ownable: caller is not the owner")
         })
 
-        it("sets global pause", async () => {
+        it("sets useCustomAdapterParams to true", async () => {
             await originalTokenBridge.setUseCustomAdapterParams(true)
             expect(await originalTokenBridge.useCustomAdapterParams()).to.be.true
         })
@@ -123,12 +123,20 @@ describe("OriginalTokenBridge", () => {
             await expect(originalTokenBridge.connect(user).bridge(originalToken.address, 0, user.address, callParams, adapterParams, { value: fee })).to.be.revertedWith("OriginalTokenBridge: invalid amount")
         })
 
+        it("reverts when the sender doesn't have enough tokens", async () => {
+            const newAmount = amount.add(1)
+            await originalToken.connect(user).approve(originalTokenBridge.address, newAmount)
+            await originalTokenBridge.registerToken(originalToken.address)
+            await expect(originalTokenBridge.connect(user).bridge(originalToken.address, newAmount, user.address, callParams, adapterParams, { value: fee })).to.be.revertedWith("ERC20: transfer amount exceeds balance")
+        })
+
         it("locks tokens in the contract", async () => {
             await originalTokenBridge.registerToken(originalToken.address)            
             await originalTokenBridge.connect(user).bridge(originalToken.address, amount, user.address, callParams, adapterParams, { value: fee })
 
             expect(await originalTokenBridge.totalValueLocked(originalToken.address)).to.be.eq(amount)
             expect(await originalToken.balanceOf(originalTokenBridge.address)).to.be.eq(amount)
+            expect(await originalToken.balanceOf(user.address)).to.be.eq(0)
         })
     })
 
@@ -185,8 +193,14 @@ describe("OriginalTokenBridge", () => {
         })
 
         it("reverts when payload has incorrect packet type", async () => {
-            const PK_INVALID = 0
-            await expect(originalTokenBridge.simulateNonblockingLzReceive(wrappedTokenChainId, createPayload(PK_INVALID))).to.be.revertedWith("OriginalTokenBridge: unknown packet type")
+            const pkUnknown = 0
+            await expect(originalTokenBridge.simulateNonblockingLzReceive(wrappedTokenChainId, createPayload(pkUnknown))).to.be.revertedWith("OriginalTokenBridge: unknown packet type")
+        })
+
+        it("reverts when a token is not supported", async () => {
+            const ERC20Factory = await ethers.getContractFactory("MintableERC20Mock")
+            const newToken = await ERC20Factory.deploy("NEW", "NEW")
+            await expect(originalTokenBridge.simulateNonblockingLzReceive(wrappedTokenChainId, createPayload(pkUnlock, newToken.address))).to.be.revertedWith("OriginalTokenBridge: token is not supported")
         })
 
         it("unlocks, collects withdrawal fees and transfers funds to the recipient", async () => {
