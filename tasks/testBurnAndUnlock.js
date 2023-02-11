@@ -16,9 +16,8 @@ module.exports = async function (taskArgs, hre) {
 		refundAddress: owner.address,
 		zroPaymentAddress: ethers.constants.AddressZero
 	}
-	
-	let tx = await bridge.bridge(token.address, originalTokenChainId, amount, owner.address, false, callParams, "0x", { value: increasedNativeFee })
-	console.log(tx)
-	await tx.wait()
-	console.log(`Bridged ${tx.hash}`)
+
+	const tx = await bridge.bridge(token.address, originalTokenChainId, amount, owner.address, false, callParams, "0x", { value: increasedNativeFee })
+	console.log(`Bridging ${tx.hash}`)
+	await tx.wait()	
 }

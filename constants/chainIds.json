@@ -6,6 +6,7 @@
   "arbitrum":         110,
   "optimism":         111,
   "fantom":           112,
+  "coredao":          153,
 
   "goerli":           10121,
   "bsc-testnet":      10102,

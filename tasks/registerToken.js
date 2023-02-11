@@ -7,7 +7,6 @@ module.exports = async function (taskArgs, hre) {
 	const originalTokenBridge = await getWalletContract(hre, originalNetwork, "OriginalTokenBridge")	
 
 	const wrappedNetwork = taskArgs.wrappedNetwork
-	const wrappedTokenChainId = CHAIN_IDS[wrappedNetwork]
 	const wrappedTokenBridge = await getWalletContract(hre, wrappedNetwork, "WrappedTokenBridge")
 
 	console.log(`\n[${originalNetwork}] OriginalTokenBridge at ${originalTokenBridge.address} calling registerToken(${taskArgs.originalToken})`)

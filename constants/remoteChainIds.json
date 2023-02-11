@@ -1,4 +1,8 @@
 {
+	"ethereum":		153,
+	"bsc":			153,
+	"polygon":		153,
+	
 	"goerli": 		10153,
 	"bsc-testnet": 	10153,
 	"mumbai": 		10153
