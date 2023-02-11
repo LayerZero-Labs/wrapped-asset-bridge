@@ -14,18 +14,22 @@ contract OriginalTokenBridge is TokenBridgeBase {
     /// @notice Tokens that can be bridged to the remote chain
     mapping(address => bool) public supportedTokens;
 
-    /// @notice Total value locked per each supported token
-    mapping(address => uint) public totalValueLocked;
+    /// @notice Token conversion rates from local decimals (LD) to shared decimals (SD).
+    /// E.g., if local decimals is 18 and shared decimals is 6, the conversion rate is 10^12
+    mapping(address => uint) public LDtoSDConversionRate;
+
+    /// @notice Total value locked per each supported token in shared decimals
+    mapping(address => uint) public totalValueLockedSD;
 
     /// @notice LayerZero id of the remote chain where wrapped tokens are minted
-    uint16 public remoteChainId;   
+    uint16 public remoteChainId;
 
     /// @notice Address of the wrapped native gas token (e.g. WETH, WBNB, WMATIC)
     address public immutable weth;
 
     event SendToken(address token, address from, address to, uint amount);
     event ReceiveToken(address token, address to, uint amount);
-    event SetRemoteChainId(uint16 remoteChainId);    
+    event SetRemoteChainId(uint16 remoteChainId);
     event RegisterToken(address token);
     event WithdrawFee(address indexed token, address to, uint amount);
 
@@ -35,20 +39,29 @@ contract OriginalTokenBridge is TokenBridgeBase {
         weth = _weth;
     }
 
-    function registerToken(address token) external onlyOwner {
+    /// @notice Registers a token for bridging
+    /// @param token address of the token
+    /// @param sharedDecimals number of decimals used for all original tokens mapped to the same wrapped token.
+    /// E.g., 6 is shared decimals for USDC on Ethereum, BSC and Polygon
+    function registerToken(address token, uint8 sharedDecimals) external onlyOwner {
         require(token != address(0), "OriginalTokenBridge: invalid token address");
         require(!supportedTokens[token], "OriginalTokenBridge: token already registered");
+
+        uint8 localDecimals = _getTokenDecimals(token);
+        require(localDecimals >= sharedDecimals, "OriginalTokenBridge: shared decimals must be less than or equal to local decimals");
+
         supportedTokens[token] = true;
+        LDtoSDConversionRate[token] = 10**(localDecimals - sharedDecimals);
         emit RegisterToken(token);
     }
 
     function setRemoteChainId(uint16 _remoteChainId) external onlyOwner {
         remoteChainId = _remoteChainId;
         emit SetRemoteChainId(_remoteChainId);
-    }   
+    }
 
-    function accruedFee(address token) public view returns (uint) {
-        return IERC20(token).balanceOf(address(this)) - totalValueLocked[token];
+    function accruedFeeLD(address token) public view returns (uint) {
+        return IERC20(token).balanceOf(address(this)) - _amountSDtoLD(token, totalValueLockedSD[token]);
     }
 
     function estimateBridgeFee(bool useZro, bytes calldata adapterParams) public view returns (uint nativeFee, uint zroFee) {
@@ -59,42 +72,47 @@ contract OriginalTokenBridge is TokenBridgeBase {
 
     /// @notice Bridges ERC20 to the remote chain
     /// @dev Locks an ERC20 on the source chain and sends LZ message to the remote chain to mint a wrapped token
-    function bridge(address token, uint amount, address to, LzLib.CallParams calldata callParams, bytes memory adapterParams) external payable nonReentrant {
+    function bridge(address token, uint amountLD, address to, LzLib.CallParams calldata callParams, bytes memory adapterParams) external payable nonReentrant {
+        require(supportedTokens[token], "OriginalTokenBridge: token is not supported");
+        amountLD = _removeDust(token, amountLD);
+
         // Supports tokens with transfer fee
         uint balanceBefore = IERC20(token).balanceOf(address(this));
-        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
+        IERC20(token).safeTransferFrom(msg.sender, address(this), amountLD);
         uint balanceAfter = IERC20(token).balanceOf(address(this));
-        amount = balanceAfter - balanceBefore;
+        amountLD = balanceAfter - balanceBefore;
 
-        _bridge(token, amount, to, msg.value, callParams, adapterParams);
+        _bridge(token, amountLD, to, msg.value, callParams, adapterParams);
     }
 
     /// @notice Bridges ETH to the remote chain
     /// @dev Locks WETH on the source chain and sends LZ message to the remote chain to mint a wrapped token
-    function bridgeETH(uint amount, address to, LzLib.CallParams calldata callParams, bytes memory adapterParams) external payable nonReentrant {
-        require(msg.value >= amount, "OriginalTokenBridge: not enough value sent");
-        IWETH(weth).deposit{value: amount}();
-        _bridge(weth, amount, to, msg.value - amount, callParams, adapterParams);
+    function bridgeETH(uint amountLD, address to, LzLib.CallParams calldata callParams, bytes memory adapterParams) external payable nonReentrant {
+        require(supportedTokens[weth], "OriginalTokenBridge: token is not supported");
+        require(msg.value >= amountLD, "OriginalTokenBridge: not enough value sent");
+        IWETH(weth).deposit{value: amountLD}();
+        _bridge(weth, amountLD, to, msg.value - amountLD, callParams, adapterParams);
     }
 
-    function _bridge(address token, uint amount, address to, uint nativeFee, LzLib.CallParams calldata callParams, bytes memory adapterParams) private {
+    function _bridge(address token, uint amountLD, address to, uint nativeFee, LzLib.CallParams calldata callParams, bytes memory adapterParams) private {
         require(to != address(0), "OriginalTokenBridge: invalid to");
-        require(supportedTokens[token], "OriginalTokenBridge: token is not supported");
-        require(amount > 0, "OriginalTokenBridge: invalid amount");
         _checkAdapterParams(remoteChainId, PT_MINT, adapterParams);
 
-        totalValueLocked[token] += amount;
-        bytes memory payload = abi.encode(PT_MINT, token, to, amount);
+        uint amountSD = _amountLDtoSD(token, amountLD);
+        require(amountSD > 0, "OriginalTokenBridge: invalid amount");
+
+        totalValueLockedSD[token] += amountSD;
+        bytes memory payload = abi.encode(PT_MINT, token, to, amountSD);
         _lzSend(remoteChainId, payload, callParams.refundAddress, callParams.zroPaymentAddress, adapterParams, nativeFee);
-        emit SendToken(token, msg.sender, to, amount);
+        emit SendToken(token, msg.sender, to, amountLD);
     }
 
-    function withdrawFee(address token, address to, uint amount) public onlyOwner {
-        uint fee = accruedFee(token);
-        require(amount <= fee, "OriginalTokenBridge: not enough fees collected");
+    function withdrawFee(address token, address to, uint amountLD) public onlyOwner {
+        uint feeLD = accruedFeeLD(token);
+        require(amountLD <= feeLD, "OriginalTokenBridge: not enough fees collected");
 
-        IERC20(token).safeTransfer(to, amount);
-        emit WithdrawFee(token, to, amount);
+        IERC20(token).safeTransfer(to, amountLD);
+        emit WithdrawFee(token, to, amountLD);
     }
 
     /// @notice Receives ERC20 tokens or ETH from the remote chain
@@ -102,21 +120,40 @@ contract OriginalTokenBridge is TokenBridgeBase {
     function _nonblockingLzReceive(uint16 srcChainId, bytes memory, uint64, bytes memory payload) internal virtual override {
         require(srcChainId == remoteChainId, "OriginalTokenBridge: invalid source chain id");
 
-        (uint8 packetType, address token, address to, uint withdrawalAmount, uint totalAmount, bool unwrapWeth) = abi.decode(payload, (uint8, address, address, uint, uint, bool));
+        (uint8 packetType, address token, address to, uint withdrawalAmountSD, uint totalAmountSD, bool unwrapWeth) = abi.decode(payload, (uint8, address, address, uint, uint, bool));
         require(packetType == PT_UNLOCK, "OriginalTokenBridge: unknown packet type");
         require(supportedTokens[token], "OriginalTokenBridge: token is not supported");
 
-        totalValueLocked[token] -= totalAmount;       
+        totalValueLockedSD[token] -= totalAmountSD;
+        uint withdrawalAmountLD = _amountSDtoLD(token, withdrawalAmountSD);
 
         if (token == weth && unwrapWeth) {
-            IWETH(weth).withdraw(withdrawalAmount);
-            (bool success, ) = payable(to).call{value: withdrawalAmount}("");
+            IWETH(weth).withdraw(withdrawalAmountLD);
+            (bool success, ) = payable(to).call{value: withdrawalAmountLD}("");
             require(success, "OriginalTokenBridge: failed to send");
-            emit ReceiveToken(address(0), to, withdrawalAmount);
+            emit ReceiveToken(address(0), to, withdrawalAmountLD);
         } else {
-            IERC20(token).safeTransfer(to, withdrawalAmount);
-            emit ReceiveToken(token, to, withdrawalAmount);
+            IERC20(token).safeTransfer(to, withdrawalAmountLD);
+            emit ReceiveToken(token, to, withdrawalAmountLD);
         }
+    }
+
+    function _getTokenDecimals(address token) internal view returns (uint8) {
+        (bool success, bytes memory data) = token.staticcall(abi.encodeWithSignature("decimals()"));
+        require(success, "OriginalTokenBridge: failed to get token decimals");
+        return abi.decode(data, (uint8));
+    }
+
+    function _amountSDtoLD(address token, uint amountSD) internal view returns (uint) {
+        return amountSD * LDtoSDConversionRate[token];
+    }
+
+    function _amountLDtoSD(address token, uint amountLD) internal view returns (uint) {
+        return amountLD / LDtoSDConversionRate[token];
+    }
+
+    function _removeDust(address token, uint amountLD) internal view returns (uint) {
+        return _amountSDtoLD(token, _amountLDtoSD(token, amountLD));
     }
 
     /// @dev Allows receiving ETH when calling WETH.withdraw()
