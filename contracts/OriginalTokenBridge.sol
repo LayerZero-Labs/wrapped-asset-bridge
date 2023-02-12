@@ -90,6 +90,7 @@ contract OriginalTokenBridge is TokenBridgeBase {
     function bridgeETH(uint amountLD, address to, LzLib.CallParams calldata callParams, bytes memory adapterParams) external payable nonReentrant {
         require(supportedTokens[weth], "OriginalTokenBridge: token is not supported");
         require(msg.value >= amountLD, "OriginalTokenBridge: not enough value sent");
+        amountLD = _removeDust(weth, amountLD);
         IWETH(weth).deposit{value: amountLD}();
         _bridge(weth, amountLD, to, msg.value - amountLD, callParams, adapterParams);
     }
