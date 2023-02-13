@@ -12,7 +12,7 @@ Wrapped asset bridge allows bridging `ERC20` tokens and native gas tokens (e.g. 
 <br>
 
 
-[badge-warning]: https://github.com/Mqxx/GitHub-Markdown/blob/main/blockquotes/badge/warning.svg 'Warning'
+[badge-warning]: https://github.com/Mqxx/GitHub-Markdown/blob/main/blockquotes/badge/dark-theme/warning.svg 'Warning'
 
 > ![badge-warning][badge-warning]<br>
 > The bridge is not intended for bridging between existing L1 EVM chains (e.g. between Ethereum and Avalanche)
@@ -46,7 +46,7 @@ Get the coverage report.
 2. Deploy `WrappedTokenBridge.sol` on the new EVM chain.
 3. Call `setTrustedRemoteAddress` in `WrappedTokenBridge` contract and in each `OriginalTokenBridge` contract.
 4. For each token you want to bridge (e.g., `USDC`, `WETH`, etc), deploy `WrappedERC20` contract on the new EVM chain. Make sure to set `decimals` in the `WrappedERC20` to the number of decimals used in the original token you want to bridge (e.g., `6` decimals for `USDC`, `18` decimals for `WETH`). If you want to add an additional functionality to the wrapped token, inherit it from `WrappedERC20` and add a custom logic to the derived contract.
-5. For each token you want to bridge, call `registerToken(address token)` function in `OriginalTokenBridge` and `registerToken(address localToken, uint16 remoteChainId, address remoteToken)` function in `WrappedTokenBridge`. Each wrapped token can be mapped to multiple original tokens on different chains (e.g. `USDC` on the new chain is mapped to `USDC` on Ethereum and `USDC` on Avalanche).
+5. For each token you want to bridge, call `registerToken(address token, uint8 sharedDecimals)` function in `OriginalTokenBridge` and `registerToken(address localToken, uint16 remoteChainId, address remoteToken)` function in `WrappedTokenBridge`. Each wrapped token can be mapped to multiple original tokens on different chains (e.g. `USDC` on the new chain is mapped to `USDC` on Ethereum and `USDC` on Avalanche).
 
 <br>
 
@@ -59,7 +59,7 @@ Get the coverage report.
 
 ## Bridging from a new EVM chain to a native asset EVM
 1. Call `estimateBridgeFee(uint16 remoteChainId, bool useZro, bytes calldata adapterParams)` in `WrappedTokenBridge`.
-2. Call `bridge(address localToken, uint16 remoteChainId, uint amount, address to, bool unwrap, LzLib.CallParams calldata callParams, bytes memory adapterParams)` supplying `nativeFee` obtained earlier as a value. This will burn wrapped tokens and send a LayerZero message to `OriginalTokenBridge` contract on another chain to unlock original tokens.
+2. Call `(address localToken, uint16 remoteChainId, uint amount, address to, bool unwrapWeth, LzLib.CallParams calldata callParams, bytes memory adapterParams)` supplying `nativeFee` obtained earlier as a value. This will burn wrapped tokens and send a LayerZero message to `OriginalTokenBridge` contract on another chain to unlock original tokens.
 
 
 
