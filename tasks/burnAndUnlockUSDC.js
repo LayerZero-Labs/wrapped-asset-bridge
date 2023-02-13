@@ -6,8 +6,8 @@ module.exports = async function (taskArgs, hre) {
 	const originalNetwork = taskArgs.originalNetwork
 	const originalTokenChainId = CHAIN_IDS[originalNetwork]
 
-	const amount = ethers.utils.parseEther(taskArgs.amount)
-	const token = await ethers.getContract("WrappedERC20")
+	const amount = ethers.utils.parseUnits(taskArgs.amount, 6)
+	const token = await ethers.getContract("USDC")
 	const bridge = await ethers.getContract("WrappedTokenBridge")
 
 	const nativeFee = (await bridge.estimateBridgeFee(originalTokenChainId, false, "0x")).nativeFee
@@ -17,7 +17,7 @@ module.exports = async function (taskArgs, hre) {
 		zroPaymentAddress: ethers.constants.AddressZero
 	}
 
-	const tx = await bridge.bridge(token.address, originalTokenChainId, amount, owner.address, false, callParams, "0x", { value: increasedNativeFee })
-	console.log(`Bridging ${tx.hash}`)
-	await tx.wait()	
+	const tx = await bridge.bridge(token.address, originalTokenChainId, amount, owner.address, false, callParams, "0x", { value: increasedNativeFee })	
+	await tx.wait()
+	console.log(`Bridged ${tx.hash}`)
 }

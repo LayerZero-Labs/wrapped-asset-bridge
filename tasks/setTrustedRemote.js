@@ -12,9 +12,11 @@ module.exports = async function (taskArgs, hre) {
 		const originalTokenChainId = CHAIN_IDS[originalNetworks[i]]
 		const originalTokenBridge = await getWalletContract(hre, originalNetworks[i], "OriginalTokenBridge")
 		console.log(`\n[${originalNetworks[i]}] OriginalTokenBridge at ${originalTokenBridge.address} calling setTrustedRemoteAddress(${wrappedTokenChainId}, ${wrappedTokenBridge.address})`)
-		await originalTokenBridge.setTrustedRemoteAddress(wrappedTokenChainId, wrappedTokenBridge.address)
+		let tx = await originalTokenBridge.setTrustedRemoteAddress(wrappedTokenChainId, wrappedTokenBridge.address)
+		console.log(tx.hash)
 		
 		console.log(`[${wrappedNetwork}] WrappedTokenBridge at ${wrappedTokenBridge.address} calling setTrustedRemoteAddress(${originalTokenChainId}, ${originalTokenBridge.address})`)
-		await wrappedTokenBridge.setTrustedRemoteAddress(originalTokenChainId, originalTokenBridge.address)
+		tx = await wrappedTokenBridge.setTrustedRemoteAddress(originalTokenChainId, originalTokenBridge.address)
+		console.log(tx.hash)
 	}
 }

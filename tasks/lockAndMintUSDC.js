@@ -1,8 +1,8 @@
 module.exports = async function (taskArgs, hre) {
 	const signers = await ethers.getSigners()
 	const owner = signers[0]
-	const amount = ethers.utils.parseEther(taskArgs.amount)
-	const token = await ethers.getContract("MintableERC20Mock")
+	const amount = ethers.utils.parseUnits(taskArgs.amount, 6)
+	const token = await ethers.getContract("USDCMock")
 	const bridge = await ethers.getContract("OriginalTokenBridge")
 
 	let tx = await token.mint(owner.address, amount)
@@ -21,7 +21,6 @@ module.exports = async function (taskArgs, hre) {
 	}
 
 	tx = await bridge.bridge(token.address, amount, owner.address, callParams, "0x", { value: increasedNativeFee })
-	console.log(tx)
 	await tx.wait()
 	console.log(`Bridged ${tx.hash}`)
 }

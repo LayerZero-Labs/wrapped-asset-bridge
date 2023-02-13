@@ -4,17 +4,17 @@ module.exports = async function ({ deployments, getNamedAccounts }) {
 	console.log(`Deployer address: ${deployer}`)
 
 	const wrappedTokenBridge = await ethers.getContract("WrappedTokenBridge")
-	const name = "TEST"
-	const symbol = "TEST"
-	const decimals = 18
+	const wrappedTokens = ["WETH", "USDC", "USDT"]
 
-	await deploy("WrappedERC20", {
-		from: deployer,
-		args: [wrappedTokenBridge.address, name, symbol, decimals],
-		log: true,
-		waitConfirmations: 1,
-		skipIfAlreadyDeployed: true
-	})
+	for (let i = 0; i < wrappedTokens.length; i++) {
+		await deploy(wrappedTokens[i], {
+			from: deployer,
+			args: [wrappedTokenBridge.address],
+			log: true,
+			waitConfirmations: 1,
+			skipIfAlreadyDeployed: true
+		})
+	}
 }
 
 module.exports.tags = ["WrappedERC20"]
