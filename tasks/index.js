@@ -44,3 +44,9 @@ task("burnAndUnlockETH", "bridges wrapped token to original network", require(".
 	.addParam("originalNetwork", "name of the network where OriginalTokenBridge is deployed")
 	.addParam("amount", "amount to bridge")
 // npx hardhat burnAndUnlockETH --amount "0.001" --original-network "goerli" --network "coredao-testnet"
+
+task("transferOwnership", "transfers bridges ownership", require("./transferOwnership"))
+	.addParam("originalNetworks", "comma separated list of networks where original tokens are deployed")
+	.addParam("wrappedNetwork", "name of the network where wrapped tokens are deployed")
+	.addParam("newOwner", "new owner")
+// npx hardhat transferOwnership --new-owner "0x1b2B4F723e1579db0981d826017E3eaeb77Bb493" --original-networks "goerli,bsc-testnet,mumbai" --wrapped-network "coredao-testnet"
