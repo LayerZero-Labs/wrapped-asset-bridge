@@ -2,6 +2,7 @@ task("deployBridges", "deploys OriginalTokenBridge to multiple networks and Wrap
 	.addParam("originalNetworks", "comma separated list of networks where OriginalTokenBridge contract is deployed")
 	.addParam("wrappedNetwork", "name of the network where WrappedTokenBridge is deployed")	
 // npx hardhat deployBridges --original-networks "goerli,bsc-testnet,mumbai" --wrapped-network "coredao-testnet"
+// npx hardhat deployBridges --original-networks "ethereum,bsc,polygon" --wrapped-network "coredao"
 
 task("deployMockTokens", "deploys Mock tokens to multiple networks", require("./deployMockTokens"))
 	.addParam("originalNetworks", "comma separated list of networks where mock tokens contract is deployed")
@@ -27,14 +28,18 @@ task("registerTokens", "calls registerToken in OriginalTokenBridge and WrappedTo
 	.addParam("tokens", "comma separated list of tokens to register")
  // npx hardhat registerTokens--original - networks "goerli,bsc-testnet,mumbai" --wrapped - network "coredao-testnet" --tokens "WETH,USDC"
 
-task("lockAndMintUSDC", "bridges original token to wrapped network", require("./lockAndMintUSDC"))
+task("lockAndMint", "bridges original token to wrapped network", require("./lockAndMint"))
 	.addParam("amount", "amount to bridge")
-// npx hardhat lockAndMintUSDC --amount "0.001" --network "bsc-testnet"
+	.addParam("token", "token address")
+	.addParam("decimals", "token decimals")
+// npx hardhat lockAndMint --amount "1" --token "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d" --decimals 6 --network "bsc"
 
-task("burnAndUnlockUSDC", "bridges wrapped token to original network", require("./burnAndUnlockUSDC"))
+task("burnAndUnlock", "bridges wrapped token to original network", require("./burnAndUnlock"))
 	.addParam("originalNetwork", "name of the network where OriginalTokenBridge is deployed")
 	.addParam("amount", "amount to bridge")
-// npx hardhat burnAndUnlockUSDC --amount "0.002" --original-network "bsc-testnet" --network "coredao-testnet"
+	.addParam("token", "token address")
+	.addParam("decimals", "token decimals")
+// npx hardhat burnAndUnlock --amount "1" --original-network "bsc" --token "0xa4151B2B3e269645181dCcF2D426cE75fcbDeca9" --decimals 6 --network "coredao"
 
 task("lockAndMintETH", "bridges original token to wrapped network", require("./lockAndMintETH"))
 	.addParam("amount", "amount to bridge")
@@ -50,3 +55,7 @@ task("transferOwnership", "transfers bridges ownership", require("./transferOwne
 	.addParam("wrappedNetwork", "name of the network where wrapped tokens are deployed")
 	.addParam("newOwner", "new owner")
 // npx hardhat transferOwnership --new-owner "0x1b2B4F723e1579db0981d826017E3eaeb77Bb493" --original-networks "goerli,bsc-testnet,mumbai" --wrapped-network "coredao-testnet"
+
+task("verifyContract", "verifies a deployed contract", require("./verifyContract"))
+	.addParam("contract", "contract name")
+// npx hardhat verifyContract --contract "OriginalTokenBridge" --network "ethereum"

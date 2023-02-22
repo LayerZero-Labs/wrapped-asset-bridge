@@ -108,6 +108,11 @@ module.exports = {
       chainId: 250,
       accounts: accounts(),
     },
+    coredao: {
+      url: `https://rpc.coredao.org`,
+      chainId: 1116,
+      accounts: accounts(),
+    },
 
     goerli: {
       url: "https://goerli.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",

@@ -1,15 +1,14 @@
 module.exports = async function (taskArgs, hre) {
 	const signers = await ethers.getSigners()
 	const owner = signers[0]
-	const amount = ethers.utils.parseUnits(taskArgs.amount, 6)
-	const token = await ethers.getContract("USDCMock")
+	const amount = ethers.utils.parseUnits(taskArgs.amount, taskArgs.decimals)
+	const token = await hre.ethers.getContractAt(["function approve(address,uint256) public returns (bool)"], taskArgs.token);
 	const bridge = await ethers.getContract("OriginalTokenBridge")
 
-	let tx = await token.mint(owner.address, amount)
-	await tx.wait()
-	console.log(`Minted ${tx.hash}`)
+	const gasPrice = await ethers.provider.getGasPrice()
+	const increasedGasPrice = gasPrice.mul(5).div(4)
 
-	tx = await token.approve(bridge.address, amount)
+	let tx = await token.approve(bridge.address, amount, { gasPrice: increasedGasPrice })
 	await tx.wait()
 	console.log(`Approved ${tx.hash}`)
 
@@ -20,7 +19,7 @@ module.exports = async function (taskArgs, hre) {
 		zroPaymentAddress: ethers.constants.AddressZero
 	}
 
-	tx = await bridge.bridge(token.address, amount, owner.address, callParams, "0x", { value: increasedNativeFee })
+	tx = await bridge.bridge(token.address, amount, owner.address, callParams, "0x", { value: increasedNativeFee, gasPrice: increasedGasPrice })
 	await tx.wait()
 	console.log(`Bridged ${tx.hash}`)
 }
