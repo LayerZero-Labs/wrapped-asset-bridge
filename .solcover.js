@@ -1,3 +1,3 @@
 module.exports = {	
-	skipFiles: ["interfaces", "test"]
+	skipFiles: ["interfaces", "test", "wrappedTokens"]
 };

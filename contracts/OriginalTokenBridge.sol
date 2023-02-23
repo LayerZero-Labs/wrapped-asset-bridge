@@ -74,15 +74,19 @@ contract OriginalTokenBridge is TokenBridgeBase {
     /// @dev Locks an ERC20 on the source chain and sends LZ message to the remote chain to mint a wrapped token
     function bridge(address token, uint amountLD, address to, LzLib.CallParams calldata callParams, bytes memory adapterParams) external payable nonReentrant {
         require(supportedTokens[token], "OriginalTokenBridge: token is not supported");
-        amountLD = _removeDust(token, amountLD);
-
+   
         // Supports tokens with transfer fee
         uint balanceBefore = IERC20(token).balanceOf(address(this));
         IERC20(token).safeTransferFrom(msg.sender, address(this), amountLD);
         uint balanceAfter = IERC20(token).balanceOf(address(this));
-        amountLD = balanceAfter - balanceBefore;
+        (uint amountWithoutDustLD, uint dust) = _removeDust(token, balanceAfter - balanceBefore);
 
-        _bridge(token, amountLD, to, msg.value, callParams, adapterParams);
+        // return dust to the sender
+        if (dust > 0) {
+            IERC20(token).safeTransfer(msg.sender, dust);
+        }
+
+        _bridge(token, amountWithoutDustLD, to, msg.value, callParams, adapterParams);
     }
 
     /// @notice Bridges ETH to the remote chain
@@ -90,9 +94,9 @@ contract OriginalTokenBridge is TokenBridgeBase {
     function bridgeETH(uint amountLD, address to, LzLib.CallParams calldata callParams, bytes memory adapterParams) external payable nonReentrant {
         require(supportedTokens[weth], "OriginalTokenBridge: token is not supported");
         require(msg.value >= amountLD, "OriginalTokenBridge: not enough value sent");
-        amountLD = _removeDust(weth, amountLD);
+        (uint amountWithoutDustLD, ) = _removeDust(weth, amountLD);
         IWETH(weth).deposit{value: amountLD}();
-        _bridge(weth, amountLD, to, msg.value - amountLD, callParams, adapterParams);
+        _bridge(weth, amountLD, to, msg.value - amountWithoutDustLD, callParams, adapterParams);
     }
 
     function _bridge(address token, uint amountLD, address to, uint nativeFee, LzLib.CallParams calldata callParams, bytes memory adapterParams) private {
@@ -153,8 +157,9 @@ contract OriginalTokenBridge is TokenBridgeBase {
         return amountLD / LDtoSDConversionRate[token];
     }
 
-    function _removeDust(address token, uint amountLD) internal view returns (uint) {
-        return _amountSDtoLD(token, _amountLDtoSD(token, amountLD));
+    function _removeDust(address token, uint amountLD) internal view returns (uint amountWithoutDustLD, uint dust) {
+        dust = amountLD % LDtoSDConversionRate[token];
+        amountWithoutDustLD = amountLD - dust;
     }
 
     /// @dev Allows receiving ETH when calling WETH.withdraw()

@@ -1,6 +1,6 @@
 const { expect } = require("chai")
 const { ethers } = require("hardhat")
-const { utils, constants } = require("ethers")
+const { utils, constants, BigNumber } = require("ethers")
 
 describe("OriginalTokenBridge", () => {
     const originalTokenChainId = 0
@@ -145,6 +145,21 @@ describe("OriginalTokenBridge", () => {
             expect(await originalTokenBridge.totalValueLockedSD(originalToken.address)).to.be.eq(amount.div(LDtoSD))
             expect(await originalToken.balanceOf(originalTokenBridge.address)).to.be.eq(amount)
             expect(await originalToken.balanceOf(user.address)).to.be.eq(0)
+        })
+
+        it("locks tokens in the contract and returns dust to the sender", async () => {
+            const dust = BigNumber.from("12345")
+            const amountWithDust = amount.add(dust)
+
+            await originalTokenBridge.registerToken(originalToken.address, sharedDecimals)
+            await originalToken.mint(user.address, dust)
+            await originalToken.connect(user).approve(originalTokenBridge.address, amountWithDust)
+            await originalTokenBridge.connect(user).bridge(originalToken.address, amountWithDust, user.address, callParams, adapterParams, { value: fee })
+            const LDtoSD = await originalTokenBridge.LDtoSDConversionRate(originalToken.address)
+
+            expect(await originalTokenBridge.totalValueLockedSD(originalToken.address)).to.be.eq(amount.div(LDtoSD))
+            expect(await originalToken.balanceOf(originalTokenBridge.address)).to.be.eq(amount)
+            expect(await originalToken.balanceOf(user.address)).to.be.eq(dust)
         })
     })
 
