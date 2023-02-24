@@ -95,8 +95,8 @@ contract OriginalTokenBridge is TokenBridgeBase {
         require(supportedTokens[weth], "OriginalTokenBridge: token is not supported");
         require(msg.value >= amountLD, "OriginalTokenBridge: not enough value sent");
         (uint amountWithoutDustLD, ) = _removeDust(weth, amountLD);
-        IWETH(weth).deposit{value: amountLD}();
-        _bridge(weth, amountLD, to, msg.value - amountWithoutDustLD, callParams, adapterParams);
+        IWETH(weth).deposit{value: amountWithoutDustLD}();
+        _bridge(weth, amountWithoutDustLD, to, msg.value - amountWithoutDustLD, callParams, adapterParams);
     }
 
     function _bridge(address token, uint amountLD, address to, uint nativeFee, LzLib.CallParams calldata callParams, bytes memory adapterParams) private {
