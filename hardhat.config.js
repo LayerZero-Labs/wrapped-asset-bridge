@@ -120,7 +120,7 @@ module.exports = {
       accounts: accounts(),
     },
     'bsc-testnet': {
-      url: 'https://endpoints.omniatech.io/v1/bsc/testnet/public',
+      url: 'https://data-seed-prebsc-2-s1.binance.org:8545/',
       chainId: 97,
       accounts: accounts(),
     },
