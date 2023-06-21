@@ -11,7 +11,7 @@ module.exports = async function (taskArgs, hre) {
 		zroPaymentAddress: ethers.constants.AddressZero
 	}
 
-	tx = await bridge.bridgeETH(amount, owner.address, callParams, "0x", { value: amount.add(increasedNativeFee) })
+	tx = await bridge.bridgeNative(amount, owner.address, callParams, "0x", { value: amount.add(increasedNativeFee) })
 	await tx.wait()
 	console.log(`Bridged ${tx.hash}`)
 }

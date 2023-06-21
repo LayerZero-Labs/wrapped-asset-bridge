@@ -89,9 +89,9 @@ contract OriginalTokenBridge is TokenBridgeBase {
         _bridge(token, amountWithoutDustLD, to, msg.value, callParams, adapterParams);
     }
 
-    /// @notice Bridges ETH to the remote chain
+    /// @notice Bridges native gas token (e.g. ETH) to the remote chain
     /// @dev Locks WETH on the source chain and sends LZ message to the remote chain to mint a wrapped token
-    function bridgeETH(uint amountLD, address to, LzLib.CallParams calldata callParams, bytes memory adapterParams) external payable nonReentrant {
+    function bridgeNative(uint amountLD, address to, LzLib.CallParams calldata callParams, bytes memory adapterParams) external payable nonReentrant {
         require(supportedTokens[weth], "OriginalTokenBridge: token is not supported");
         require(msg.value >= amountLD, "OriginalTokenBridge: not enough value sent");
         (uint amountWithoutDustLD, ) = _removeDust(weth, amountLD);
