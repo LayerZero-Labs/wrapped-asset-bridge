@@ -61,6 +61,17 @@ Get the coverage report.
 1. Call `estimateBridgeFee(uint16 remoteChainId, bool useZro, bytes calldata adapterParams)` in `WrappedTokenBridge`.
 2. Call `bridge(address localToken, uint16 remoteChainId, uint amount, address to, bool unwrapWeth, LzLib.CallParams calldata callParams, bytes memory adapterParams)` supplying `nativeFee` obtained earlier as a value. This will burn wrapped tokens and send a LayerZero message to `OriginalTokenBridge` contract on another chain to unlock original tokens.
 
+## Using Scripts
+
+Populate the env MNENOIC in the env file and run the following commands in order.
 
 
+1. `npx hardhat deployBridges --original-networks "polygon,gnosis" --wrapped-network "fuse"`
 
+Now populate the Bridge address on Fuse in the env file and proceed.
+
+2. `npx hardhat deployTestTokens --original-networks "fuse"`
+3. `npx hardhat setTrustedRemote --original-networks "gnosis" --wrapped-network "fuse"`
+4. `npx hardhat registerTokens --original-networks "gnosis" --wrapped-network "fuse" --tokens "USDC,USDT,WETH"`
+
+New tokens can be added by adding them in constants and updating the list in `deploy/WrappedERC20.js`
