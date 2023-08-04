@@ -7,7 +7,6 @@ module.exports = async function (taskArgs, hre) {
 
 	const gasPrice = await ethers.provider.getGasPrice()
 	const increasedGasPrice = gasPrice.mul(5).div(4)
-
 	let tx = await token.approve(bridge.address, amount, { gasPrice: increasedGasPrice })
 	await tx.wait()
 	console.log(`Approved ${tx.hash}`)
@@ -18,7 +17,7 @@ module.exports = async function (taskArgs, hre) {
 		refundAddress: owner.address,
 		zroPaymentAddress: ethers.constants.AddressZero
 	}
-
+	console.log(`Gas price: ${increasedNativeFee}`)
 	tx = await bridge.bridge(token.address, amount, owner.address, callParams, "0x", { value: increasedNativeFee, gasPrice: increasedGasPrice })
 	await tx.wait()
 	console.log(`Bridged ${tx.hash}`)

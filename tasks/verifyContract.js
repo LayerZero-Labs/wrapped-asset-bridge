@@ -1,5 +1,6 @@
 const FileSystem = require("fs");
 const BLOCK_EXPLORER_API_URL = require("../constants/blockExplorerApi.json")
+const axios = require("axios")
 
 const licenseTypes = {
 	"None": 1,
@@ -149,13 +150,15 @@ module.exports = async function (taskArgs, hre) {
 	// console.log(putObj.sourceCode)
 	// console.log(`=++++++++=`)
 
-	const response = await fetch(`${BLOCK_EXPLORER_API_URL[hre.network.name]}`, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
-		},
-		body: urlEncode(putObj)
-	})
+	const response = await axios.post(
+		`${BLOCK_EXPLORER_API_URL[hre.network.name]}`,
+		urlEncode(putObj),
+		{
+			headers: {
+				'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+			}
+		}
+	)
 
-	console.log(await response.json())
+	console.log(await response.data)
 }

@@ -8,6 +8,9 @@ require('hardhat-deploy');
 require('hardhat-deploy-ethers');
 require('@openzeppelin/hardhat-upgrades');
 require('./tasks');
+require('@typechain/hardhat')
+require('@nomicfoundation/hardhat-ethers')
+require('@nomicfoundation/hardhat-chai-matchers')
 
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
@@ -92,6 +95,7 @@ module.exports = {
       url: "https://rpc-mainnet.maticvigil.com",
       chainId: 137,
       accounts: accounts(),
+      blockGasLimit: 10000000000000000
     },
     arbitrum: {
       url: `https://arb1.arbitrum.io/rpc`,
@@ -106,6 +110,16 @@ module.exports = {
     fantom: {
       url: `https://rpcapi.fantom.network`,
       chainId: 250,
+      accounts: accounts(),
+    },
+    fuse: {
+      url: `https://rpc.fuse.io`,
+      chainId: 122,
+      accounts: accounts(),
+    },
+    gnosis: {
+      url: `https://rpc.ankr.com/gnosis`,
+      chainId: 100,
       accounts: accounts(),
     },
     coredao: {
