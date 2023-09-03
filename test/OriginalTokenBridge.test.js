@@ -1,11 +1,11 @@
 const { expect } = require("chai")
-const { ethers } = require("hardhat")
-const { utils, constants, BigNumber } = require("ethers")
+const { ethers, upgrades } = require("hardhat")
+const { parseEther, AbiCoder, ZeroAddress } = require("ethers")
 
 describe("OriginalTokenBridge", () => {
     const originalTokenChainId = 0
     const wrappedTokenChainId = 1
-    const amount = utils.parseEther("10")
+    const amount = parseEther("10")
     const pkUnlock = 1
     const sharedDecimals = 6
     const wethSharedDecimals = 18
@@ -13,14 +13,14 @@ describe("OriginalTokenBridge", () => {
     let owner, user
     let originalToken, weth
     let originalTokenBridge
-    let originalTokenEndpoint, originalTokenBridgeFactory
+    let originalTokenEndpoint, originalTokenBridgeFactory, originalTokenBridgeV2Factory
     let callParams, adapterParams
 
-    const createPayload = (pk = pkUnlock, token = originalToken.address, withdrawalAmount = amount, totalAmount = amount, unwrapWeth = false) =>
-        utils.defaultAbiCoder.encode(["uint8", "address", "address", "uint256", "uint256", "bool"], [pk, token, user.address, withdrawalAmount, totalAmount, unwrapWeth])
+    const createPayload = (pk = pkUnlock, token = originalToken.target, withdrawalAmount = amount, totalAmount = amount, unwrapWeth = false) =>
+        AbiCoder.defaultAbiCoder().encode(["uint8", "address", "address", "uint256", "uint256", "bool"], [pk, token, user.address, withdrawalAmount, totalAmount, unwrapWeth])
 
     beforeEach(async () => {
-        [owner, user] = await ethers.getSigners()
+        ;[owner, user] = await ethers.getSigners()
 
         const wethFactory = await ethers.getContractFactory("WETH9")
         weth = await wethFactory.deploy()
@@ -29,24 +29,24 @@ describe("OriginalTokenBridge", () => {
         originalTokenEndpoint = await endpointFactory.deploy()
         const wrappedTokenEndpoint = await endpointFactory.deploy()
 
-        originalTokenBridgeFactory = await ethers.getContractFactory("OriginalTokenBridgeHarness")
-        originalTokenBridge = await originalTokenBridgeFactory.deploy(originalTokenEndpoint.address, wrappedTokenChainId, weth.address)
+        originalTokenBridgeFactory = await ethers.getContractFactory("OriginalTokenBridgeHarnessUpgradable")
+        originalTokenBridge = await upgrades.deployProxy(originalTokenBridgeFactory, [originalTokenEndpoint.target, wrappedTokenChainId, weth.target], { kind: "uups" })
 
-        const wrappedTokenBridgeFactory = await ethers.getContractFactory("WrappedTokenBridge")
-        const wrappedTokenBridge = await wrappedTokenBridgeFactory.deploy(wrappedTokenEndpoint.address)
+        const wrappedTokenBridgeFactory = await ethers.getContractFactory("WrappedTokenBridgeUpgradable")
+        const wrappedTokenBridge = await upgrades.deployProxy(wrappedTokenBridgeFactory, [wrappedTokenEndpoint.target], { kind: "uups" })
 
         const ERC20Factory = await ethers.getContractFactory("MintableERC20Mock")
         originalToken = await ERC20Factory.deploy("TEST", "TEST")
 
-        await originalTokenBridge.setTrustedRemoteAddress(wrappedTokenChainId, wrappedTokenBridge.address)
+        await originalTokenBridge.setTrustedRemoteAddress(wrappedTokenChainId, wrappedTokenBridge.target)
         await originalToken.mint(user.address, amount)
 
-        callParams = { refundAddress: user.address, zroPaymentAddress: constants.AddressZero }
+        callParams = { refundAddress: user.address, zroPaymentAddress: ZeroAddress }
         adapterParams = "0x"
     })
 
     it("reverts when passing address zero as WETH in the constructor", async () => {
-        await expect(originalTokenBridgeFactory.deploy(originalTokenEndpoint.address, wrappedTokenChainId, constants.AddressZero)).to.be.revertedWith("OriginalTokenBridge: invalid WETH address")
+        await expect(upgrades.deployProxy(originalTokenBridgeFactory, [originalTokenEndpoint.runner.address, wrappedTokenChainId, ZeroAddress], { kind: "uups" })).to.be.revertedWith("OriginalTokenBridge: invalid WETH address")
     })
 
     it("doesn't renounce ownership", async () => {
@@ -56,27 +56,27 @@ describe("OriginalTokenBridge", () => {
 
     describe("registerToken", () => {
         it("reverts when passing address zero", async () => {
-            await expect(originalTokenBridge.registerToken(constants.AddressZero, sharedDecimals)).to.be.revertedWith("OriginalTokenBridge: invalid token address")
+            await expect(originalTokenBridge.registerToken(ZeroAddress, sharedDecimals)).to.be.revertedWith("OriginalTokenBridge: invalid token address")
         })
 
         it("reverts if token already registered", async () => {
-            await originalTokenBridge.registerToken(originalToken.address, sharedDecimals)
-            await expect(originalTokenBridge.registerToken(originalToken.address, sharedDecimals)).to.be.revertedWith("OriginalTokenBridge: token already registered")
+            await originalTokenBridge.registerToken(originalToken.target, sharedDecimals)
+            await expect(originalTokenBridge.registerToken(originalToken.target, sharedDecimals)).to.be.revertedWith("OriginalTokenBridge: token already registered")
         })
 
         it("reverts when called by non owner", async () => {
-            await expect(originalTokenBridge.connect(user).registerToken(originalToken.address, sharedDecimals)).to.be.revertedWith("Ownable: caller is not the owner")
+            await expect(originalTokenBridge.connect(user).registerToken(originalToken.target, sharedDecimals)).to.be.revertedWith("Ownable: caller is not the owner")
         })
 
         it("reverts when shared decimals is greater than local decimals", async () => {
             const invalidSharedDecimals = 19
-            await expect(originalTokenBridge.registerToken(originalToken.address, invalidSharedDecimals)).to.be.revertedWith("OriginalTokenBridge: shared decimals must be less than or equal to local decimals")
+            await expect(originalTokenBridge.registerToken(originalToken.target, invalidSharedDecimals)).to.be.revertedWith("OriginalTokenBridge: shared decimals must be less than or equal to local decimals")
         })
 
         it("registers token and saves local to shared decimals conversion rate", async () => {
-            await originalTokenBridge.registerToken(originalToken.address, sharedDecimals)
-            expect(await originalTokenBridge.supportedTokens(originalToken.address)).to.be.true
-            expect((await originalTokenBridge.LDtoSDConversionRate(originalToken.address)).toNumber()).to.be.eq(10 ** 12)
+            await originalTokenBridge.registerToken(originalToken.target, sharedDecimals)
+            expect(await originalTokenBridge.supportedTokens(originalToken.target)).to.be.true
+            expect(await originalTokenBridge.LDtoSDConversionRate(originalToken.target)).to.be.eq(10 ** 12)
         })
     })
 
@@ -107,113 +107,113 @@ describe("OriginalTokenBridge", () => {
         let fee
         beforeEach(async () => {
             fee = (await originalTokenBridge.estimateBridgeFee(false, adapterParams)).nativeFee
-            await originalToken.connect(user).approve(originalTokenBridge.address, amount)
+            await originalToken.connect(user).approve(originalTokenBridge.target, amount)
         })
 
         it("reverts when to is address zero", async () => {
-            await originalTokenBridge.registerToken(originalToken.address, sharedDecimals)
-            await expect(originalTokenBridge.connect(user).bridge(originalToken.address, amount, constants.AddressZero, callParams, adapterParams, { value: fee })).to.be.revertedWith("OriginalTokenBridge: invalid to")
+            await originalTokenBridge.registerToken(originalToken.target, sharedDecimals)
+            await expect(originalTokenBridge.connect(user).bridge(originalToken.target, amount, ZeroAddress, callParams, adapterParams, { value: fee })).to.be.revertedWith("OriginalTokenBridge: invalid to")
         })
 
         it("reverts when token is not registered", async () => {
-            await expect(originalTokenBridge.connect(user).bridge(originalToken.address, amount, user.address, callParams, adapterParams, { value: fee })).to.be.revertedWith("OriginalTokenBridge: token is not supported")
+            await expect(originalTokenBridge.connect(user).bridge(originalToken.target, amount, user.address, callParams, adapterParams, { value: fee })).to.be.revertedWith("OriginalTokenBridge: token is not supported")
         })
 
         it("reverts when useCustomAdapterParams is false and non-empty adapterParams are passed", async () => {
-            const adapterParamsV1 = ethers.utils.solidityPack(["uint16", "uint256"], [1, 200000])
-            await originalTokenBridge.registerToken(originalToken.address, sharedDecimals)
-            await expect(originalTokenBridge.connect(user).bridge(originalToken.address, amount, user.address, callParams, adapterParamsV1, { value: fee })).to.be.revertedWith("TokenBridgeBase: adapterParams must be empty")
+            const adapterParamsV1 = AbiCoder.defaultAbiCoder().encode(["uint16", "uint256"], [1, 200000])
+            await originalTokenBridge.registerToken(originalToken.target, sharedDecimals)
+            await expect(originalTokenBridge.connect(user).bridge(originalToken.target, amount, user.address, callParams, adapterParamsV1, { value: fee })).to.be.revertedWith("TokenBridgeBase: adapterParams must be empty")
         })
 
         it("reverts when amount is 0", async () => {
-            await originalTokenBridge.registerToken(originalToken.address, sharedDecimals)
-            await expect(originalTokenBridge.connect(user).bridge(originalToken.address, 0, user.address, callParams, adapterParams, { value: fee })).to.be.revertedWith("OriginalTokenBridge: invalid amount")
+            await originalTokenBridge.registerToken(originalToken.target, sharedDecimals)
+            await expect(originalTokenBridge.connect(user).bridge(originalToken.target, 0, user.address, callParams, adapterParams, { value: fee })).to.be.revertedWith("OriginalTokenBridge: invalid amount")
         })
 
         it("reverts when the sender doesn't have enough tokens", async () => {
-            const newAmount = amount.add(utils.parseEther("0.001"))
-            await originalToken.connect(user).approve(originalTokenBridge.address, newAmount)
-            await originalTokenBridge.registerToken(originalToken.address, sharedDecimals)
-            await expect(originalTokenBridge.connect(user).bridge(originalToken.address, newAmount, user.address, callParams, adapterParams, { value: fee })).to.be.revertedWith("ERC20: transfer amount exceeds balance")
+            const newAmount = amount + parseEther("0.001")
+            await originalToken.connect(user).approve(originalTokenBridge.target, newAmount)
+            await originalTokenBridge.registerToken(originalToken.target, sharedDecimals)
+            await expect(originalTokenBridge.connect(user).bridge(originalToken.target, newAmount, user.address, callParams, adapterParams, { value: fee })).to.be.revertedWith("ERC20: transfer amount exceeds balance")
         })
 
         it("locks tokens in the contract", async () => {
-            await originalTokenBridge.registerToken(originalToken.address, sharedDecimals)
-            await originalTokenBridge.connect(user).bridge(originalToken.address, amount, user.address, callParams, adapterParams, { value: fee })
-            const LDtoSD = await originalTokenBridge.LDtoSDConversionRate(originalToken.address)
+            await originalTokenBridge.registerToken(originalToken.target, sharedDecimals)
+            await originalTokenBridge.connect(user).bridge(originalToken.target, amount, user.address, callParams, adapterParams, { value: fee })
+            const LDtoSD = await originalTokenBridge.LDtoSDConversionRate(originalToken.target)
 
-            expect(await originalTokenBridge.totalValueLockedSD(originalToken.address)).to.be.eq(amount.div(LDtoSD))
-            expect(await originalToken.balanceOf(originalTokenBridge.address)).to.be.eq(amount)
+            expect(await originalTokenBridge.totalValueLockedSD(originalToken.target)).to.be.eq(amount / LDtoSD)
+            expect(await originalToken.balanceOf(originalTokenBridge.target)).to.be.eq(amount)
             expect(await originalToken.balanceOf(user.address)).to.be.eq(0)
         })
 
         it("locks tokens in the contract and returns dust to the sender", async () => {
-            const dust = BigNumber.from("12345")
-            const amountWithDust = amount.add(dust)
+            const dust = BigInt("12345")
+            const amountWithDust = dust + amount
 
-            await originalTokenBridge.registerToken(originalToken.address, sharedDecimals)
+            await originalTokenBridge.registerToken(originalToken.target, sharedDecimals)
             await originalToken.mint(user.address, dust)
-            await originalToken.connect(user).approve(originalTokenBridge.address, amountWithDust)
-            await originalTokenBridge.connect(user).bridge(originalToken.address, amountWithDust, user.address, callParams, adapterParams, { value: fee })
-            const LDtoSD = await originalTokenBridge.LDtoSDConversionRate(originalToken.address)
+            await originalToken.connect(user).approve(originalTokenBridge.target, amountWithDust)
+            await originalTokenBridge.connect(user).bridge(originalToken.target, amountWithDust, user.address, callParams, adapterParams, { value: fee })
+            const LDtoSD = await originalTokenBridge.LDtoSDConversionRate(originalToken.target)
 
-            expect(await originalTokenBridge.totalValueLockedSD(originalToken.address)).to.be.eq(amount.div(LDtoSD))
-            expect(await originalToken.balanceOf(originalTokenBridge.address)).to.be.eq(amount)
+            expect(await originalTokenBridge.totalValueLockedSD(originalToken.target)).to.be.eq(amount / LDtoSD)
+            expect(await originalToken.balanceOf(originalTokenBridge.target)).to.be.eq(amount)
             expect(await originalToken.balanceOf(user.address)).to.be.eq(dust)
         })
     })
 
-    describe("bridgeETH", () => {
+    describe("bridgeNative", () => {
         let totalAmount
         beforeEach(async () => {
             const fee = (await originalTokenBridge.estimateBridgeFee(false, adapterParams)).nativeFee
-            totalAmount = amount.add(fee)
+            totalAmount = amount + fee
         })
 
         it("reverts when to is address zero", async () => {
-            await originalTokenBridge.registerToken(weth.address, wethSharedDecimals)
-            await expect(originalTokenBridge.connect(user).bridgeETH(amount, constants.AddressZero, callParams, adapterParams, { value: totalAmount })).to.be.revertedWith("OriginalTokenBridge: invalid to")
+            await originalTokenBridge.registerToken(weth.target, wethSharedDecimals)
+            await expect(originalTokenBridge.connect(user).bridgeNative(amount, ZeroAddress, callParams, adapterParams, { value: totalAmount })).to.be.revertedWith("OriginalTokenBridge: invalid to")
         })
 
         it("reverts when WETH is not registered", async () => {
-            await expect(originalTokenBridge.connect(user).bridgeETH(amount, user.address, callParams, adapterParams, { value: totalAmount })).to.be.revertedWith("OriginalTokenBridge: token is not supported")
+            await expect(originalTokenBridge.connect(user).bridgeNative(amount, user.address, callParams, adapterParams, { value: totalAmount })).to.be.revertedWith("OriginalTokenBridge: token is not supported")
         })
 
         it("reverts when useCustomAdapterParams is false and non-empty adapterParams are passed", async () => {
-            const adapterParamsV1 = ethers.utils.solidityPack(["uint16", "uint256"], [1, 200000])
-            await originalTokenBridge.registerToken(weth.address, wethSharedDecimals)
-            await expect(originalTokenBridge.connect(user).bridgeETH(amount, user.address, callParams, adapterParamsV1, { value: totalAmount })).to.be.revertedWith("TokenBridgeBase: adapterParams must be empty")
+            const adapterParamsV1 = AbiCoder.defaultAbiCoder().encode(["uint16", "uint256"], [1, 200000])
+            await originalTokenBridge.registerToken(weth.target, wethSharedDecimals)
+            await expect(originalTokenBridge.connect(user).bridgeNative(amount, user.address, callParams, adapterParamsV1, { value: totalAmount })).to.be.revertedWith("TokenBridgeBase: adapterParams must be empty")
         })
 
         it("reverts when useCustomAdapterParams is true and min gas limit isn't set", async () => {
-            const adapterParamsV1 = ethers.utils.solidityPack(["uint16", "uint256"], [1, 200000])
-            await originalTokenBridge.registerToken(weth.address, wethSharedDecimals)
+            const adapterParamsV1 = AbiCoder.defaultAbiCoder().encode(["uint16", "uint256"], [1, 200000])
+            await originalTokenBridge.registerToken(weth.target, wethSharedDecimals)
             await originalTokenBridge.setUseCustomAdapterParams(true)
-            await expect(originalTokenBridge.connect(user).bridgeETH(amount, user.address, callParams, adapterParamsV1, { value: totalAmount })).to.be.revertedWith("LzApp: minGasLimit not set")
+            await expect(originalTokenBridge.connect(user).bridgeNative(amount, user.address, callParams, adapterParamsV1, { value: totalAmount })).to.be.revertedWith("LzApp: minGasLimit not set")
         })
 
         it("reverts when amount is 0", async () => {
-            await originalTokenBridge.registerToken(weth.address, wethSharedDecimals)
-            await expect(originalTokenBridge.connect(user).bridgeETH(0, user.address, callParams, adapterParams, { value: totalAmount })).to.be.revertedWith("OriginalTokenBridge: invalid amount")
+            await originalTokenBridge.registerToken(weth.target, wethSharedDecimals)
+            await expect(originalTokenBridge.connect(user).bridgeNative(0, user.address, callParams, adapterParams, { value: totalAmount })).to.be.revertedWith("OriginalTokenBridge: invalid amount")
         })
 
         it("reverts when value is less than amount", async () => {
-            await originalTokenBridge.registerToken(weth.address, wethSharedDecimals)
-            await expect(originalTokenBridge.connect(user).bridgeETH(amount, user.address, callParams, adapterParams, { value: 0 })).to.be.revertedWith("OriginalTokenBridge: not enough value sent")
+            await originalTokenBridge.registerToken(weth.target, wethSharedDecimals)
+            await expect(originalTokenBridge.connect(user).bridgeNative(amount, user.address, callParams, adapterParams, { value: 0 })).to.be.revertedWith("OriginalTokenBridge: not enough value sent")
         })
 
         it("locks WETH in the contract", async () => {
-            await originalTokenBridge.registerToken(weth.address, wethSharedDecimals)
-            await originalTokenBridge.connect(user).bridgeETH(amount, user.address, callParams, adapterParams, { value: totalAmount })
+            await originalTokenBridge.registerToken(weth.target, wethSharedDecimals)
+            await originalTokenBridge.connect(user).bridgeNative(amount, user.address, callParams, adapterParams, { value: totalAmount })
 
-            expect(await originalTokenBridge.totalValueLockedSD(weth.address)).to.be.eq(amount)
-            expect(await weth.balanceOf(originalTokenBridge.address)).to.be.eq(amount)
+            expect(await originalTokenBridge.totalValueLockedSD(weth.target)).to.be.eq(amount)
+            expect(await weth.balanceOf(originalTokenBridge.target)).to.be.eq(amount)
         })
     })
 
     describe("_nonblockingLzReceive", () => {
         beforeEach(async () => {
-            await originalTokenBridge.registerToken(originalToken.address, sharedDecimals)
+            await originalTokenBridge.registerToken(originalToken.target, sharedDecimals)
         })
 
         it("reverts when received from an unknown chain", async () => {
@@ -228,81 +228,101 @@ describe("OriginalTokenBridge", () => {
         it("reverts when a token is not supported", async () => {
             const ERC20Factory = await ethers.getContractFactory("MintableERC20Mock")
             const newToken = await ERC20Factory.deploy("NEW", "NEW")
-            await expect(originalTokenBridge.simulateNonblockingLzReceive(wrappedTokenChainId, createPayload(pkUnlock, newToken.address))).to.be.revertedWith("OriginalTokenBridge: token is not supported")
+            await expect(originalTokenBridge.simulateNonblockingLzReceive(wrappedTokenChainId, createPayload(pkUnlock, newToken.target))).to.be.revertedWith("OriginalTokenBridge: token is not supported")
         })
 
         it("unlocks, collects withdrawal fees and transfers funds to the recipient", async () => {
-            const LDtoSD = await originalTokenBridge.LDtoSDConversionRate(originalToken.address)
+            const LDtoSD = await originalTokenBridge.LDtoSDConversionRate(originalToken.target)
             const bridgingFee = (await originalTokenBridge.estimateBridgeFee(false, adapterParams)).nativeFee
-            const withdrawalFee = amount.div(100)
-            const withdrawalAmount = amount.sub(withdrawalFee)
-            const withdrawalAmountSD = withdrawalAmount.div(LDtoSD)
-            const totalAmountSD = amount.div(LDtoSD)
+            const withdrawalFee = amount / BigInt(100)
+            const withdrawalAmount = amount - withdrawalFee
+            const withdrawalAmountSD = withdrawalAmount / LDtoSD
+            const totalAmountSD = amount / LDtoSD
 
             // Setup
-            await originalToken.connect(user).approve(originalTokenBridge.address, amount)
+            await originalToken.connect(user).approve(originalTokenBridge.target, amount)
 
             // Bridge
-            await originalTokenBridge.connect(user).bridge(originalToken.address, amount, user.address, callParams, adapterParams, { value: bridgingFee })
+            await originalTokenBridge.connect(user).bridge(originalToken.target, amount, user.address, callParams, adapterParams, { value: bridgingFee })
 
             expect(await originalToken.balanceOf(user.address)).to.be.eq(0)
-            expect(await originalToken.balanceOf(originalTokenBridge.address)).to.be.eq(amount)
+            expect(await originalToken.balanceOf(originalTokenBridge.target)).to.be.eq(amount)
 
             // Receive
-            await originalTokenBridge.simulateNonblockingLzReceive(wrappedTokenChainId, createPayload(pkUnlock, originalToken.address, withdrawalAmountSD, totalAmountSD))
+            await originalTokenBridge.simulateNonblockingLzReceive(wrappedTokenChainId, createPayload(pkUnlock, originalToken.target, withdrawalAmountSD, totalAmountSD))
 
-            expect(await originalTokenBridge.totalValueLockedSD(originalToken.address)).to.be.eq(0)
-            expect(await originalToken.balanceOf(originalTokenBridge.address)).to.be.eq(withdrawalFee)
+            expect(await originalTokenBridge.totalValueLockedSD(originalToken.target)).to.be.eq(0)
+            expect(await originalToken.balanceOf(originalTokenBridge.target)).to.be.eq(withdrawalFee)
             expect(await originalToken.balanceOf(user.address)).to.be.eq(withdrawalAmount)
         })
 
         it("unlocks WETH and transfers ETH to the recipient", async () => {
             const bridgingFee = (await originalTokenBridge.estimateBridgeFee(false, adapterParams)).nativeFee
-            totalAmount = amount.add(bridgingFee)
+            totalAmount = amount + bridgingFee
 
             // Setup
-            await originalTokenBridge.registerToken(weth.address, wethSharedDecimals)
+            await originalTokenBridge.registerToken(weth.target, wethSharedDecimals)
 
             // Bridge
-            await originalTokenBridge.connect(user).bridgeETH(amount, user.address, callParams, adapterParams, { value: totalAmount })
+            await originalTokenBridge.connect(user).bridgeNative(amount, user.address, callParams, adapterParams, { value: totalAmount })
             const recipientBalanceBefore = await ethers.provider.getBalance(user.address)
 
             // Receive
-            await originalTokenBridge.simulateNonblockingLzReceive(wrappedTokenChainId, createPayload(pkUnlock, weth.address, amount, amount, true))
+            await originalTokenBridge.simulateNonblockingLzReceive(wrappedTokenChainId, createPayload(pkUnlock, weth.target, amount, amount, true))
 
-            expect(await originalTokenBridge.totalValueLockedSD(weth.address)).to.be.eq(0)
-            expect(await weth.balanceOf(originalTokenBridge.address)).to.be.eq(0)
+            expect(await originalTokenBridge.totalValueLockedSD(weth.target)).to.be.eq(0)
+            expect(await weth.balanceOf(originalTokenBridge.target)).to.be.eq(0)
             expect(await weth.balanceOf(user.address)).to.be.eq(0)
-            expect(await ethers.provider.getBalance(user.address)).to.be.eq(recipientBalanceBefore.add(amount))
+            expect(await ethers.provider.getBalance(user.address)).to.be.eq(recipientBalanceBefore + amount)
         })
     })
 
     describe("withdrawFee", () => {
         beforeEach(async () => {
-            await originalTokenBridge.registerToken(originalToken.address, sharedDecimals)
+            await originalTokenBridge.registerToken(originalToken.target, sharedDecimals)
         })
 
         it("reverts when called by non owner", async () => {
-            await expect(originalTokenBridge.connect(user).withdrawFee(originalToken.address, owner.address, 1)).to.be.revertedWith("Ownable: caller is not the owner")
+            await expect(originalTokenBridge.connect(user).withdrawFee(originalToken.target, owner.address, 1)).to.be.revertedWith("Ownable: caller is not the owner")
         })
 
         it("reverts when not enough fees collected", async () => {
-            await expect(originalTokenBridge.withdrawFee(originalToken.address, owner.address, 1)).to.be.revertedWith("OriginalTokenBridge: not enough fees collected")
+            await expect(originalTokenBridge.withdrawFee(originalToken.target, owner.address, 1)).to.be.revertedWith("OriginalTokenBridge: not enough fees collected")
         })
 
         it("withdraws fees", async () => {
-            const LDtoSD = await originalTokenBridge.LDtoSDConversionRate(originalToken.address)
+            const LDtoSD = await originalTokenBridge.LDtoSDConversionRate(originalToken.target)
             const bridgingFee = (await originalTokenBridge.estimateBridgeFee(false, adapterParams)).nativeFee
-            const withdrawalFee = amount.div(100)
-            const withdrawalAmountSD = amount.sub(withdrawalFee).div(LDtoSD)
-            const totalAmountSD = amount.div(LDtoSD)
+            const withdrawalFee = amount / BigInt(100)
+            const withdrawalAmount = amount - withdrawalFee
+            const withdrawalAmountSD = withdrawalAmount / LDtoSD
+            const totalAmountSD = amount / LDtoSD
 
-            await originalToken.connect(user).approve(originalTokenBridge.address, amount)
-            await originalTokenBridge.connect(user).bridge(originalToken.address, amount, user.address, callParams, adapterParams, { value: bridgingFee })
-            await originalTokenBridge.simulateNonblockingLzReceive(wrappedTokenChainId, createPayload(pkUnlock, originalToken.address, withdrawalAmountSD, totalAmountSD))
+            await originalToken.connect(user).approve(originalTokenBridge.target, amount)
+            await originalTokenBridge.connect(user).bridge(originalToken.target, amount, user.address, callParams, adapterParams, { value: bridgingFee })
+            await originalTokenBridge.simulateNonblockingLzReceive(wrappedTokenChainId, createPayload(pkUnlock, originalToken.target, withdrawalAmountSD, totalAmountSD))
 
-            await originalTokenBridge.withdrawFee(originalToken.address, owner.address, withdrawalFee)
+            await originalTokenBridge.withdrawFee(originalToken.target, owner.address, withdrawalFee)
             expect(await originalToken.balanceOf(owner.address)).to.be.eq(withdrawalFee)
+        })
+    })
+
+    describe("Upgrades Contract", () => {
+        beforeEach(async () => {
+            originalTokenBridgeV2Factory = await ethers.getContractFactory("OriginalTokenBridgeHarnessUpgradableV2")
+        })
+
+        it("reverts when upgraded by non owner", async () => {
+            const connectedProxy = originalTokenBridgeV2Factory.connect(user)
+            await expect(upgrades.upgradeProxy(originalTokenBridge, connectedProxy)).to.be.revertedWith("Ownable: caller is not the owner")
+        })
+
+        it("Upgrades the contract", async () => {
+            await upgrades.upgradeProxy(originalTokenBridge, originalTokenBridgeV2Factory)
+            const filter = originalTokenBridge.filters.Upgraded()
+            const logs = await originalTokenBridge.queryFilter(filter)
+            const event = logs[0]
+            expect(event).to.exist
         })
     })
 })

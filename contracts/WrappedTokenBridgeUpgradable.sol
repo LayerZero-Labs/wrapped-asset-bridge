@@ -3,11 +3,11 @@ pragma solidity ^0.8.17;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {LzLib} from "@layerzerolabs/solidity-examples/contracts/libraries/LzLib.sol";
-import {TokenBridgeBase} from "./TokenBridgeBase.sol";
+import {TokenBridgeBaseUpgradable} from "./TokenBridgeBaseUpgradable.sol";
 import {IWrappedERC20} from "./interfaces/IWrappedERC20.sol";
 
 /// @dev Mints a wrapped token when a message received from a remote chain and burns a wrapped token when bridging to a remote chain
-contract WrappedTokenBridge is TokenBridgeBase {
+contract WrappedTokenBridgeUpgradable is TokenBridgeBaseUpgradable {
     /// @notice Total bps representing 100%
     uint16 public constant TOTAL_BPS = 10000;
 
@@ -31,7 +31,13 @@ contract WrappedTokenBridge is TokenBridgeBase {
     event RegisterToken(address localToken, uint16 remoteChainId, address remoteToken);
     event SetWithdrawalFeeBps(uint16 withdrawalFeeBps);
 
-    constructor(address _endpoint) TokenBridgeBase(_endpoint) {}
+    function __WrappedTokenBridgeBaseUpgradable_init(address _endpoint) internal onlyInitializing {
+        __TokenBridgeBaseUpgradable_init(_endpoint);
+    }
+
+    function initialize(address _endpoint) virtual external initializer {
+        __WrappedTokenBridgeBaseUpgradable_init(_endpoint);
+    }
 
     function registerToken(address localToken, uint16 remoteChainId, address remoteToken) external onlyOwner {
         require(localToken != address(0), "WrappedTokenBridge: invalid local token");

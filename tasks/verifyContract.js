@@ -148,14 +148,4 @@ module.exports = async function (taskArgs, hre) {
 	// console.log(`=++++++++=`)
 	// console.log(putObj.sourceCode)
 	// console.log(`=++++++++=`)
-
-	const response = await fetch(`${BLOCK_EXPLORER_API_URL[hre.network.name]}`, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
-		},
-		body: urlEncode(putObj)
-	})
-
-	console.log(await response.json())
 }

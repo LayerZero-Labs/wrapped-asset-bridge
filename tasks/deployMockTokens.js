@@ -7,6 +7,6 @@ module.exports = async function (taskArgs, hre) {
 
 	for (let i = 0; i < originalNetworks.length; i++){
 		console.log(`\nDeploying MockToken on ${originalNetworks[i]}...`)
-		await crossChainHelper.deployContract(hre, originalNetworks[i], ["USDCMock"])
+		await crossChainHelper.deployContract(hre, originalNetworks[i], ["WrappedERC20"])
 	}
 }

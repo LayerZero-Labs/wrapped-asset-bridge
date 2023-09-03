@@ -1,9 +1,8 @@
 {
 	"ethereum":		153,
 	"bsc":			153,
-	"polygon":		153,
-	
-	"goerli": 		10153,
-	"bsc-testnet": 	10153,
-	"mumbai": 		10153
+	"polygon":		138,
+	"fuse": 		109,
+	"gnosis":		138,
+	"optimism":		111
 }

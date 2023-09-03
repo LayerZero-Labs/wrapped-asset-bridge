@@ -1,3 +1,4 @@
+const { getWalletContract } = require("../utils/crossChainHelper")
 module.exports = async function ({ deployments, getNamedAccounts }) {
 	const { deploy } = deployments
 	const { deployer } = await getNamedAccounts()

@@ -61,6 +61,45 @@ Get the coverage report.
 1. Call `estimateBridgeFee(uint16 remoteChainId, bool useZro, bytes calldata adapterParams)` in `WrappedTokenBridge`.
 2. Call `bridge(address localToken, uint16 remoteChainId, uint amount, address to, bool unwrapWeth, LzLib.CallParams calldata callParams, bytes memory adapterParams)` supplying `nativeFee` obtained earlier as a value. This will burn wrapped tokens and send a LayerZero message to `OriginalTokenBridge` contract on another chain to unlock original tokens.
 
+## Using Scripts
+
+To deploy fresh contracts plese delete the contents of the `deployments` folder.
+
+Populate the env MNENOIC in the env file and run the following commands in order.
 
 
+1. `npx hardhat deployBridges --original-networks "polygon,gnosis" --wrapped-network "fuse"`
 
+Now populate the Bridge address on Fuse in the env file and proceed.
+
+2. `npx hardhat deployTestTokens --original-networks "fuse"`
+3. `npx hardhat setTrustedRemote --original-networks "gnosis" --wrapped-network "fuse"`
+4. `npx hardhat registerTokens --original-networks "gnosis" --wrapped-network "fuse" --tokens "USDC,USDT,WETH"`
+
+New tokens can be added by adding them in constants and updating the list in `deploy/WrappedERC20.js`
+
+
+## Deployed Proxy Contracts
+
+### Polygon
+OriginalTokenBridge: `0x8f5D6332eD11338D2dA4fAAC6675e9A6757BeC8b`<br>
+WrappedTokenBridge: `0xe453d6649643F1F460C371dC3D1da98F7922fe51`<br>
+
+### Gnosis
+OriginalTokenBridge: `0xb0F9cE8598c623Ff42e52388F9b452B7CDc409a1`<br>
+WrappedTokenBridge: `0x4014115fB4816Bc8343d8e69d2708Fa738dCaa15`<br>
+
+### Optimism
+OriginalTokenBridge: `0x081dF5af5d022D4A4a4520D4D0D336B8432fDBBb`<br>
+WrappedTokenBridge: `0xEEd9154F63f6F0044E6b00dDdEFD895b5B4ED580`<br>
+
+### Arbitrum
+OriginalTokenBridge: `0x081dF5af5d022D4A4a4520D4D0D336B8432fDBBb`<br>
+WrappedTokenBridge: `0xEEd9154F63f6F0044E6b00dDdEFD895b5B4ED580`<br>
+
+### Fuse
+OriginalTokenBridge(to Polygon): `0x36207130CF22d8C54842569A32a0Cd5D711f3580`<br>
+OriginalTokenBridge(to Gnosis): `0xc465107230c21f154627e017b6727A3C18984B02`<br>
+OriginalTokenBridge(to Optimism): `0xeC3FD32cd5389FbC581427A648d6dc1bc5cfFE3B`<br>
+OriginalTokenBridge(to Arbitrum): `0x56dF61E9f39C75e2d84C05753557bEBB9841Eb5B`<br>
+WrappedTokenBridge: `0x353af4878d7452e974538706273887F7ED90Da47`<br>

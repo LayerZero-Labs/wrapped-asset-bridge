@@ -1,26 +1,26 @@
 const { expect } = require("chai")
 const { ethers } = require("hardhat")
-const { utils, constants } = require("ethers")
+const { parseEther, ZeroAddress } = require("ethers")
 
 describe("WrappedERC20", () => {
     const name = "WTEST"
     const symbol = "WTEST"
     const decimals = 18
-    const amount = utils.parseEther("10")
+    const amount = parseEther("10")
 
     let owner, bridge
     let wrappedToken
     let wrappedTokenFactory
 
     beforeEach(async () => {
-        [owner, bridge] = await ethers.getSigners()
+        ;[owner, bridge] = await ethers.getSigners()
 
         wrappedTokenFactory = await ethers.getContractFactory("WrappedERC20")
         wrappedToken = await wrappedTokenFactory.deploy(bridge.address, name, symbol, decimals)
     })
 
     it("reverts when passing address zero in the constructor", async () => {
-        await expect(wrappedTokenFactory.deploy(constants.AddressZero, name, symbol, decimals)).to.be.revertedWith("WrappedERC20: invalid bridge")
+        await expect(wrappedTokenFactory.deploy(ZeroAddress, name, symbol, decimals)).to.be.revertedWith("WrappedERC20: invalid bridge")
     })
 
     it("overrides the default ERC20 number of decimals with the one passed in the constructor", async () => {

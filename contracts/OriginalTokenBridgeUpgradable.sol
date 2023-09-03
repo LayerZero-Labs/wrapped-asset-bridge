@@ -4,11 +4,11 @@ pragma solidity ^0.8.17;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {LzLib} from "@layerzerolabs/solidity-examples/contracts/libraries/LzLib.sol";
-import {TokenBridgeBase} from "./TokenBridgeBase.sol";
+import {TokenBridgeBaseUpgradable} from "./TokenBridgeBaseUpgradable.sol";
 import {IWETH} from "./interfaces/IWETH.sol";
 
 /// @dev Locks an ERC20 on the source chain and sends LZ message to the remote chain to mint a wrapped token
-contract OriginalTokenBridge is TokenBridgeBase {
+contract OriginalTokenBridgeUpgradable is TokenBridgeBaseUpgradable {
     using SafeERC20 for IERC20;
 
     /// @notice Tokens that can be bridged to the remote chain
@@ -25,7 +25,7 @@ contract OriginalTokenBridge is TokenBridgeBase {
     uint16 public remoteChainId;
 
     /// @notice Address of the wrapped native gas token (e.g. WETH, WBNB, WMATIC)
-    address public immutable weth;
+    address public weth;
 
     event SendToken(address token, address from, address to, uint amount);
     event ReceiveToken(address token, address to, uint amount);
@@ -33,10 +33,15 @@ contract OriginalTokenBridge is TokenBridgeBase {
     event RegisterToken(address token);
     event WithdrawFee(address indexed token, address to, uint amount);
 
-    constructor(address _endpoint, uint16 _remoteChainId, address _weth) TokenBridgeBase(_endpoint) {
+    function __OriginalTokenBridgeBaseUpgradable_init(address _endpoint, uint16 _remoteChainId, address _weth) internal onlyInitializing {
         require(_weth != address(0), "OriginalTokenBridge: invalid WETH address");
+        __TokenBridgeBaseUpgradable_init(_endpoint);
         remoteChainId = _remoteChainId;
         weth = _weth;
+    }
+
+    function initialize(address _endpoint, uint16 _remoteChainId, address _weth) virtual external initializer {
+        __OriginalTokenBridgeBaseUpgradable_init(_endpoint, _remoteChainId, _weth);
     }
 
     /// @notice Registers a token for bridging
@@ -74,7 +79,6 @@ contract OriginalTokenBridge is TokenBridgeBase {
     /// @dev Locks an ERC20 on the source chain and sends LZ message to the remote chain to mint a wrapped token
     function bridge(address token, uint amountLD, address to, LzLib.CallParams calldata callParams, bytes memory adapterParams) external payable nonReentrant {
         require(supportedTokens[token], "OriginalTokenBridge: token is not supported");
-   
         // Supports tokens with transfer fee
         uint balanceBefore = IERC20(token).balanceOf(address(this));
         IERC20(token).safeTransferFrom(msg.sender, address(this), amountLD);
