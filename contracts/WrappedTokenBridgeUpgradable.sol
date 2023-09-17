@@ -89,7 +89,7 @@ contract WrappedTokenBridgeUpgradable is TokenBridgeBaseUpgradable {
 
     /// @notice Receives ERC20 tokens or ETH from the remote chain
     /// @dev Mints wrapped tokens in response to LZ message from the remote chain
-    function _nonblockingLzReceive(uint16 srcChainId, bytes memory, uint64, bytes memory payload) internal virtual override {
+    function _nonblockingLzReceive(uint16 srcChainId, bytes memory, uint64, bytes memory payload) internal virtual override whenNotPaused {
         (uint8 packetType, address remoteToken, address to, uint amount) = abi.decode(payload, (uint8, address, address, uint));
         require(packetType == PT_MINT, "WrappedTokenBridge: unknown packet type");
 

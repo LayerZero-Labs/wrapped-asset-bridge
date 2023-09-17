@@ -126,7 +126,7 @@ contract OriginalTokenBridgeUpgradable is TokenBridgeBaseUpgradable {
 
     /// @notice Receives ERC20 tokens or ETH from the remote chain
     /// @dev Unlocks locked ERC20 tokens or ETH in response to LZ message from the remote chain
-    function _nonblockingLzReceive(uint16 srcChainId, bytes memory, uint64, bytes memory payload) internal virtual override {
+    function _nonblockingLzReceive(uint16 srcChainId, bytes memory, uint64, bytes memory payload) internal virtual override whenNotPaused {
         require(srcChainId == remoteChainId, "OriginalTokenBridge: invalid source chain id");
 
         (uint8 packetType, address token, address to, uint withdrawalAmountSD, uint totalAmountSD, bool unwrapWeth) = abi.decode(payload, (uint8, address, address, uint, uint, bool));
