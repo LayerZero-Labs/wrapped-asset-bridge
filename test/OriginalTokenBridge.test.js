@@ -325,4 +325,64 @@ describe("OriginalTokenBridge", () => {
             expect(event).to.exist
         })
     })
+
+    describe("Pauses Contract", () => {
+        it("reverts when paused by non owner", async () => {
+            await expect(originalTokenBridge.connect(user).pause()).to.be.revertedWith("Ownable: caller is not the owner")
+        })
+
+        it("pauses the contract", async () => {
+            await originalTokenBridge.pause()
+            expect(await originalTokenBridge.paused()).to.be.true
+        })
+
+        it("reverts when paused and bridge is called", async () => {
+            await originalTokenBridge.pause()
+            let fee = (await originalTokenBridge.estimateBridgeFee(false, adapterParams)).nativeFee
+            await originalToken.connect(user).approve(originalTokenBridge.target, amount)
+            await originalTokenBridge.registerToken(originalToken.target, sharedDecimals)
+            await expect(originalTokenBridge.connect(user).bridge(originalToken.target, amount, user.address, callParams, adapterParams, { value: fee })).to.be.revertedWith("Pausable: paused")
+        })
+
+        it("reverts when paused and bridgeNative is called", async () => {
+            await originalTokenBridge.pause()
+            let fee = (await originalTokenBridge.estimateBridgeFee(false, adapterParams)).nativeFee
+            await originalTokenBridge.registerToken(weth.target, wethSharedDecimals)
+            await expect(originalTokenBridge.connect(user).bridgeNative(amount, user.address, callParams, adapterParams, { value: fee + amount })).to.be.revertedWith("Pausable: paused")
+        })
+    })
+
+    describe("Unpauses Contract", () => {
+        beforeEach(async () => {
+            await originalTokenBridge.pause()
+        })
+
+        it("reverts when unpaused by non owner", async () => {
+            await expect(originalTokenBridge.connect(user).unpause()).to.be.revertedWith("Ownable: caller is not the owner")
+        })
+
+        it("unpauses the contract", async () => {
+            await originalTokenBridge.unpause()
+            expect(await originalTokenBridge.paused()).to.be.false
+        })
+
+        it("unpaused and bridge is called", async () => {
+            await originalTokenBridge.unpause()
+            let fee = (await originalTokenBridge.estimateBridgeFee(false, adapterParams)).nativeFee
+            await originalToken.connect(user).approve(originalTokenBridge.target, amount)
+            await originalTokenBridge.registerToken(originalToken.target, sharedDecimals)
+            await originalTokenBridge.connect(user).bridge(originalToken.target, amount, user.address, callParams, adapterParams, { value: fee })
+            expect(await originalToken.balanceOf(user.address)).to.be.eq(0)
+            expect(await originalToken.balanceOf(originalTokenBridge.target)).to.be.eq(amount)
+        })
+
+        it("unpaused and bridgeNative is called", async () => {
+            await originalTokenBridge.unpause()
+            let fee = (await originalTokenBridge.estimateBridgeFee(false, adapterParams)).nativeFee
+            await originalTokenBridge.registerToken(weth.target, wethSharedDecimals)
+            await originalTokenBridge.connect(user).bridgeNative(amount, user.address, callParams, adapterParams, { value: fee + amount })
+            expect(await originalTokenBridge.totalValueLockedSD(weth.target)).to.be.eq(amount)
+            expect(await weth.balanceOf(originalTokenBridge.target)).to.be.eq(amount)
+        })
+    })
 })

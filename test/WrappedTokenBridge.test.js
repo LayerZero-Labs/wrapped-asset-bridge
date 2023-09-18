@@ -176,4 +176,51 @@ describe("WrappedTokenBridge", () => {
             expect(event).to.exist
         })
     })
+
+    describe("Pauses Contract", () => {
+        it("reverts when paused by non owner", async () => {
+            await expect(wrappedTokenBridge.connect(user).pause()).to.be.revertedWith("Ownable: caller is not the owner")
+        })
+
+        it("pauses the contract", async () => {
+            await wrappedTokenBridge.pause()
+            expect(await wrappedTokenBridge.paused()).to.be.true
+        })
+
+        it("reverts when paused and bridge is called", async () => {
+            await wrappedTokenBridge.pause()
+            await expect(wrappedTokenBridge.connect(user).bridge(wrappedToken.target, originalTokenChainId, amount, user.address, false, callParams, adapterParams)).to.be.revertedWith("Pausable: paused")
+        })
+    })
+
+    describe("Unpauses Contract", () => {
+        beforeEach(async () => {
+            await wrappedTokenBridge.pause()
+        })
+
+        it("reverts when unpaused by non owner", async () => {
+            await expect(wrappedTokenBridge.connect(user).unpause()).to.be.revertedWith("Ownable: caller is not the owner")
+        })
+
+        it("unpauses the contract", async () => {
+            await wrappedTokenBridge.unpause()
+            expect(await wrappedTokenBridge.paused()).to.be.false
+        })
+
+        it("unpaused and bridge is called", async () => {
+            let fee = (await wrappedTokenBridge.estimateBridgeFee(originalTokenChainId, false, adapterParams)).nativeFee
+            await wrappedTokenBridge.unpause()
+            await wrappedTokenBridge.registerToken(wrappedToken.target, originalTokenChainId, originalToken.target)
+            await wrappedTokenBridge.simulateNonblockingLzReceive(originalTokenChainId, createPayload())
+
+            expect(await wrappedToken.totalSupply()).to.be.eq(amount)
+            expect(await wrappedToken.balanceOf(user.address)).to.be.eq(amount)
+            expect(await wrappedTokenBridge.totalValueLocked(originalTokenChainId, originalToken.target)).to.be.eq(amount)
+            await wrappedTokenBridge.connect(user).bridge(wrappedToken.target, originalTokenChainId, amount, user.address, false, callParams, adapterParams, { value: fee })
+
+            expect(await wrappedToken.totalSupply()).to.be.eq(0)
+            expect(await wrappedToken.balanceOf(user.address)).to.be.eq(0)
+            expect(await wrappedTokenBridge.totalValueLocked(originalTokenChainId, originalToken.target)).to.be.eq(0)
+        })
+    })
 })
