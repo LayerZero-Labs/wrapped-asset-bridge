@@ -168,7 +168,7 @@ describe("End to End", function () {
             await wrappedTokenBridge.registerToken(wrappedToken.address, ethereumChainId, weth.address)
 
             const fee = await ethereumBridge.estimateBridgeFee(false, adapterParams)
-            await ethereumBridge.connect(user).bridgeETH(ethereumAmount, user.address, callParams, adapterParams, { value: ethereumAmount.add(fee.nativeFee) })
+            await ethereumBridge.connect(user).bridgeNative(ethereumAmount, user.address, callParams, adapterParams, { value: ethereumAmount.add(fee.nativeFee) })
         })
 
         it("locks WETH", async () => {
