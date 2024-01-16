@@ -1,0 +1,83 @@
+{
+  "env": {
+    "commonjs": true,
+    "es2021": true,
+    "node": true,
+    "mocha": true
+  },
+  "extends": ["eslint:recommended", "prettier"],
+  "parserOptions": {
+    "ecmaVersion": 12
+  },
+  // Typescript config
+  "overrides": [
+    {
+      "files": ["*.ts"],
+      "parser": "@typescript-eslint/parser",
+      "parserOptions": { "project": "./tsconfig.json" },
+      "plugins": ["@typescript-eslint", "prettier"],
+      "extends": [
+        "eslint:recommended",
+        "plugin:@typescript-eslint/recommended",
+        "plugin:@typescript-eslint/eslint-recommended",
+        "prettier"
+      ],
+      "rules": {
+        "prettier/prettier": "error",
+        "@typescript-eslint/no-unused-vars": "error",
+        "@typescript-eslint/no-explicit-any": "warn",
+        "@typescript-eslint/naming-convention": [
+          "error",
+          {
+            "selector": "default",
+            "format": ["camelCase"]
+          },
+          {
+            "selector": "variable",
+            "format": ["camelCase", "UPPER_CASE"]
+          },
+          {
+            "selector": "parameter",
+            "format": ["camelCase"],
+            "leadingUnderscore": "allow"
+          },
+          {
+            "selector": ["objectLiteralProperty"],
+            "format": ["camelCase", "PascalCase"]
+          },
+          {
+            "selector": ["classProperty"],
+            "modifiers": ["private", "static"],
+            "format": ["PascalCase", "UPPER_CASE"]
+          },
+          {
+            "selector": ["classProperty", "classMethod"],
+            "modifiers": ["private"],
+            "format": ["camelCase"],
+            "leadingUnderscore": "require"
+          },
+          {
+            "selector": ["classProperty", "classMethod"],
+            "modifiers": ["protected"],
+            "format": ["camelCase"],
+            "leadingUnderscore": "require"
+          },
+          {
+            "selector": "typeLike",
+            "format": ["PascalCase"]
+          },
+          {
+            "selector": ["enumMember"],
+            "format": ["camelCase", "PascalCase"]
+          },
+          {
+            "selector": "variable",
+            "types": ["boolean"],
+            "format": ["PascalCase"],
+            "prefix": ["is", "should", "has", "can", "did", "will"]
+          }
+        ]
+      }
+    }
+  ]
+}

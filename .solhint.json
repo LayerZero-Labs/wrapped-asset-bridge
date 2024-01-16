@@ -1,11 +1,48 @@
 {
-	"extends": "solhint:default",
-	"rules": {
-		"avoid-suicide": "error",
-		"avoid-sha3": "warn",
-		"max-line-length": [
-			"warn",
-			300
-		]
-	}
+  "extends": "solhint:recommended",
+  "plugins": ["prettier"],
+  "rules": {
+    "prettier/prettier": "error",
+    "code-complexity": ["error", 5],
+    "function-max-lines": ["error", 40],
+    "max-line-length": ["error", 100],
+    "max-states-count": ["error", 3],
+    "no-console": "error",
+    "no-empty-blocks": "error",
+    "no-global-import": "error",
+    "no-unused-vars": "error",
+    "payable-fallback": "off",
+    "reason-string": ["off", { "maxLength": 32 }],
+    "constructor-syntax": "off",
+    "comprehensive-interface": "off",
+    "quotes": ["error", "double"],
+    "const-name-snakecase": "error",
+    "contract-name-camelcase": "error",
+    "event-name-camelcase": "error",
+    "func-name-mixedcase": "error",
+    "func-param-name-mixedcase": "error",
+    "modifier-name-mixedcase": "error",
+    "private-vars-leading-underscore": ["error", { "strict": false }],
+    "var-name-mixedcase": "error",
+    "imports-on-top": "error",
+    "ordering": "error",
+    "visibility-modifier-order": "error",
+    "avoid-call-value": "off",
+    "avoid-low-level-calls": "off",
+    "avoid-sha3": "error",
+    "avoid-suicide": "error",
+    "avoid-throw": "error",
+    "avoid-tx-origin": "off",
+    "check-send-result": "error",
+    "compiler-version": ["error", "0.8.21"],
+    "mark-callable-contracts": "off",
+    "func-visibility": ["error", { "ignoreConstructors": true }],
+    "multiple-sends": "error",
+    "no-complex-fallback": "error",
+    "no-inline-assembly": "off",
+    "not-rely-on-block-hash": "error",
+    "not-rely-on-time": "error",
+    "reentrancy": "error",
+    "state-visibility": "error"
+  }
 }

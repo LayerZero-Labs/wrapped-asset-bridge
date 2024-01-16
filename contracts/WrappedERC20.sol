@@ -14,7 +14,12 @@ contract WrappedERC20 is ERC20 {
     /// @param _name wrapped token name
     /// @param _symbol wrapped token symbol
     /// @param _decimals number of decimals of the original token
-    constructor(address _bridge, string memory _name, string memory _symbol, uint8 _decimals) ERC20(_name, _symbol) {
+    constructor(
+        address _bridge,
+        string memory _name,
+        string memory _symbol,
+        uint8 _decimals
+    ) ERC20(_name, _symbol) {
         require(_bridge != address(0), "WrappedERC20: invalid bridge");
 
         bridge = _bridge;

@@ -1,0 +1,11 @@
+{
+  "overrides": [
+    {
+      "files": "*.sol",
+      "options": {
+        "compiler": "0.8.17"
+      }
+    }
+  ],
+  "plugins": ["prettier-plugin-solidity"]
+}
