@@ -21,11 +21,11 @@ describe("OriginalTokenBridge", () => {
     token = originalToken.address,
     withdrawalAmount = amount,
     totalAmount = amount,
-    unwrapWeth = false,
+    unwrapWeth = false
   ) =>
     utils.defaultAbiCoder.encode(
       ["uint8", "address", "address", "uint256", "uint256", "bool"],
-      [pk, token, user.address, withdrawalAmount, totalAmount, unwrapWeth],
+      [pk, token, user.address, withdrawalAmount, totalAmount, unwrapWeth]
     );
 
   beforeEach(async () => {
@@ -35,24 +35,25 @@ describe("OriginalTokenBridge", () => {
     weth = await wethFactory.deploy();
 
     const endpointFactory = await ethers.getContractFactory(
-      "LayerZeroEndpointStub",
+      "LayerZeroEndpointStub"
     );
     originalTokenEndpoint = await endpointFactory.deploy();
     const wrappedTokenEndpoint = await endpointFactory.deploy();
 
     originalTokenBridgeFactory = await ethers.getContractFactory(
-      "OriginalTokenBridgeHarness",
+      "OriginalTokenBridgeHarness"
     );
     originalTokenBridge = await originalTokenBridgeFactory.deploy(
       originalTokenEndpoint.address,
       wrappedTokenChainId,
-      weth.address,
+      weth.address
     );
 
-    const wrappedTokenBridgeFactory =
-      await ethers.getContractFactory("WrappedTokenBridge");
+    const wrappedTokenBridgeFactory = await ethers.getContractFactory(
+      "WrappedTokenBridge"
+    );
     const wrappedTokenBridge = await wrappedTokenBridgeFactory.deploy(
-      wrappedTokenEndpoint.address,
+      wrappedTokenEndpoint.address
     );
 
     const ERC20Factory = await ethers.getContractFactory("MintableERC20Mock");
@@ -60,7 +61,7 @@ describe("OriginalTokenBridge", () => {
 
     await originalTokenBridge.setTrustedRemoteAddress(
       wrappedTokenChainId,
-      wrappedTokenBridge.address,
+      wrappedTokenBridge.address
     );
     await originalToken.mint(user.address, amount);
 
@@ -76,8 +77,8 @@ describe("OriginalTokenBridge", () => {
       originalTokenBridgeFactory.deploy(
         originalTokenEndpoint.address,
         wrappedTokenChainId,
-        constants.AddressZero,
-      ),
+        constants.AddressZero
+      )
     ).to.be.revertedWith("OriginalTokenBridge: invalid WETH address");
   });
 
@@ -89,23 +90,17 @@ describe("OriginalTokenBridge", () => {
   describe("registerToken", () => {
     it("reverts when passing address zero", async () => {
       await expect(
-        originalTokenBridge.registerToken(
-          constants.AddressZero,
-          sharedDecimals,
-        ),
+        originalTokenBridge.registerToken(constants.AddressZero, sharedDecimals)
       ).to.be.revertedWith("OriginalTokenBridge: invalid token address");
     });
 
     it("reverts if token already registered", async () => {
       await originalTokenBridge.registerToken(
         originalToken.address,
-        sharedDecimals,
+        sharedDecimals
       );
       await expect(
-        originalTokenBridge.registerToken(
-          originalToken.address,
-          sharedDecimals,
-        ),
+        originalTokenBridge.registerToken(originalToken.address, sharedDecimals)
       ).to.be.revertedWith("OriginalTokenBridge: token already registered");
     });
 
@@ -113,7 +108,7 @@ describe("OriginalTokenBridge", () => {
       await expect(
         originalTokenBridge
           .connect(user)
-          .registerToken(originalToken.address, sharedDecimals),
+          .registerToken(originalToken.address, sharedDecimals)
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
 
@@ -122,24 +117,24 @@ describe("OriginalTokenBridge", () => {
       await expect(
         originalTokenBridge.registerToken(
           originalToken.address,
-          invalidSharedDecimals,
-        ),
+          invalidSharedDecimals
+        )
       ).to.be.revertedWith(
-        "OriginalTokenBridge: shared decimals must be less than or equal to local decimals",
+        "OriginalTokenBridge: shared decimals must be less than or equal to local decimals"
       );
     });
 
     it("registers token and saves local to shared decimals conversion rate", async () => {
       await originalTokenBridge.registerToken(
         originalToken.address,
-        sharedDecimals,
+        sharedDecimals
       );
       expect(await originalTokenBridge.supportedTokens(originalToken.address))
         .to.be.true;
       expect(
         (
           await originalTokenBridge.LDtoSDConversionRate(originalToken.address)
-        ).toNumber(),
+        ).toNumber()
       ).to.be.eq(10 ** 12);
     });
   });
@@ -148,14 +143,14 @@ describe("OriginalTokenBridge", () => {
     const newRemoteChainId = 2;
     it("reverts when called by non owner", async () => {
       await expect(
-        originalTokenBridge.connect(user).setRemoteChainId(newRemoteChainId),
+        originalTokenBridge.connect(user).setRemoteChainId(newRemoteChainId)
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
 
     it("sets remote chain id", async () => {
       await originalTokenBridge.setRemoteChainId(newRemoteChainId);
       expect(await originalTokenBridge.remoteChainId()).to.be.eq(
-        newRemoteChainId,
+        newRemoteChainId
       );
     });
   });
@@ -163,7 +158,7 @@ describe("OriginalTokenBridge", () => {
   describe("setUseCustomAdapterParams", () => {
     it("reverts when called by non owner", async () => {
       await expect(
-        originalTokenBridge.connect(user).setUseCustomAdapterParams(true),
+        originalTokenBridge.connect(user).setUseCustomAdapterParams(true)
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
 
@@ -186,7 +181,7 @@ describe("OriginalTokenBridge", () => {
     it("reverts when to is address zero", async () => {
       await originalTokenBridge.registerToken(
         originalToken.address,
-        sharedDecimals,
+        sharedDecimals
       );
       await expect(
         originalTokenBridge
@@ -197,8 +192,8 @@ describe("OriginalTokenBridge", () => {
             constants.AddressZero,
             callParams,
             adapterParams,
-            { value: fee },
-          ),
+            { value: fee }
+          )
       ).to.be.revertedWith("OriginalTokenBridge: invalid to");
     });
 
@@ -212,19 +207,19 @@ describe("OriginalTokenBridge", () => {
             user.address,
             callParams,
             adapterParams,
-            { value: fee },
-          ),
+            { value: fee }
+          )
       ).to.be.revertedWith("OriginalTokenBridge: token is not supported");
     });
 
     it("reverts when useCustomAdapterParams is false and non-empty adapterParams are passed", async () => {
       const adapterParamsV1 = ethers.utils.solidityPack(
         ["uint16", "uint256"],
-        [1, 200000],
+        [1, 200000]
       );
       await originalTokenBridge.registerToken(
         originalToken.address,
-        sharedDecimals,
+        sharedDecimals
       );
       await expect(
         originalTokenBridge
@@ -235,15 +230,15 @@ describe("OriginalTokenBridge", () => {
             user.address,
             callParams,
             adapterParamsV1,
-            { value: fee },
-          ),
+            { value: fee }
+          )
       ).to.be.revertedWith("TokenBridgeBase: adapterParams must be empty");
     });
 
     it("reverts when amount is 0", async () => {
       await originalTokenBridge.registerToken(
         originalToken.address,
-        sharedDecimals,
+        sharedDecimals
       );
       await expect(
         originalTokenBridge
@@ -254,8 +249,8 @@ describe("OriginalTokenBridge", () => {
             user.address,
             callParams,
             adapterParams,
-            { value: fee },
-          ),
+            { value: fee }
+          )
       ).to.be.revertedWith("OriginalTokenBridge: invalid amount");
     });
 
@@ -266,7 +261,7 @@ describe("OriginalTokenBridge", () => {
         .approve(originalTokenBridge.address, newAmount);
       await originalTokenBridge.registerToken(
         originalToken.address,
-        sharedDecimals,
+        sharedDecimals
       );
       await expect(
         originalTokenBridge
@@ -277,15 +272,15 @@ describe("OriginalTokenBridge", () => {
             user.address,
             callParams,
             adapterParams,
-            { value: fee },
-          ),
+            { value: fee }
+          )
       ).to.be.revertedWith("ERC20: transfer amount exceeds balance");
     });
 
     it("locks tokens in the contract", async () => {
       await originalTokenBridge.registerToken(
         originalToken.address,
-        sharedDecimals,
+        sharedDecimals
       );
       await originalTokenBridge
         .connect(user)
@@ -295,17 +290,17 @@ describe("OriginalTokenBridge", () => {
           user.address,
           callParams,
           adapterParams,
-          { value: fee },
+          { value: fee }
         );
       const LDtoSD = await originalTokenBridge.LDtoSDConversionRate(
-        originalToken.address,
+        originalToken.address
       );
 
       expect(
-        await originalTokenBridge.totalValueLockedSD(originalToken.address),
+        await originalTokenBridge.totalValueLockedSD(originalToken.address)
       ).to.be.eq(amount.div(LDtoSD));
       expect(
-        await originalToken.balanceOf(originalTokenBridge.address),
+        await originalToken.balanceOf(originalTokenBridge.address)
       ).to.be.eq(amount);
       expect(await originalToken.balanceOf(user.address)).to.be.eq(0);
     });
@@ -316,7 +311,7 @@ describe("OriginalTokenBridge", () => {
 
       await originalTokenBridge.registerToken(
         originalToken.address,
-        sharedDecimals,
+        sharedDecimals
       );
       await originalToken.mint(user.address, dust);
       await originalToken
@@ -330,17 +325,17 @@ describe("OriginalTokenBridge", () => {
           user.address,
           callParams,
           adapterParams,
-          { value: fee },
+          { value: fee }
         );
       const LDtoSD = await originalTokenBridge.LDtoSDConversionRate(
-        originalToken.address,
+        originalToken.address
       );
 
       expect(
-        await originalTokenBridge.totalValueLockedSD(originalToken.address),
+        await originalTokenBridge.totalValueLockedSD(originalToken.address)
       ).to.be.eq(amount.div(LDtoSD));
       expect(
-        await originalToken.balanceOf(originalTokenBridge.address),
+        await originalToken.balanceOf(originalTokenBridge.address)
       ).to.be.eq(amount);
       expect(await originalToken.balanceOf(user.address)).to.be.eq(dust);
     });
@@ -365,8 +360,8 @@ describe("OriginalTokenBridge", () => {
             constants.AddressZero,
             callParams,
             adapterParams,
-            { value: totalAmount },
-          ),
+            { value: totalAmount }
+          )
       ).to.be.revertedWith("OriginalTokenBridge: invalid to");
     });
 
@@ -376,14 +371,14 @@ describe("OriginalTokenBridge", () => {
           .connect(user)
           .bridgeNative(amount, user.address, callParams, adapterParams, {
             value: totalAmount,
-          }),
+          })
       ).to.be.revertedWith("OriginalTokenBridge: token is not supported");
     });
 
     it("reverts when useCustomAdapterParams is false and non-empty adapterParams are passed", async () => {
       const adapterParamsV1 = ethers.utils.solidityPack(
         ["uint16", "uint256"],
-        [1, 200000],
+        [1, 200000]
       );
       await originalTokenBridge.registerToken(weth.address, wethSharedDecimals);
       await expect(
@@ -391,14 +386,14 @@ describe("OriginalTokenBridge", () => {
           .connect(user)
           .bridgeNative(amount, user.address, callParams, adapterParamsV1, {
             value: totalAmount,
-          }),
+          })
       ).to.be.revertedWith("TokenBridgeBase: adapterParams must be empty");
     });
 
     it("reverts when useCustomAdapterParams is true and min gas limit isn't set", async () => {
       const adapterParamsV1 = ethers.utils.solidityPack(
         ["uint16", "uint256"],
-        [1, 200000],
+        [1, 200000]
       );
       await originalTokenBridge.registerToken(weth.address, wethSharedDecimals);
       await originalTokenBridge.setUseCustomAdapterParams(true);
@@ -407,7 +402,7 @@ describe("OriginalTokenBridge", () => {
           .connect(user)
           .bridgeNative(amount, user.address, callParams, adapterParamsV1, {
             value: totalAmount,
-          }),
+          })
       ).to.be.revertedWith("LzApp: minGasLimit not set");
     });
 
@@ -418,7 +413,7 @@ describe("OriginalTokenBridge", () => {
           .connect(user)
           .bridgeNative(0, user.address, callParams, adapterParams, {
             value: totalAmount,
-          }),
+          })
       ).to.be.revertedWith("OriginalTokenBridge: invalid amount");
     });
 
@@ -429,7 +424,7 @@ describe("OriginalTokenBridge", () => {
           .connect(user)
           .bridgeNative(amount, user.address, callParams, adapterParams, {
             value: 0,
-          }),
+          })
       ).to.be.revertedWith("OriginalTokenBridge: not enough value sent");
     });
 
@@ -442,10 +437,10 @@ describe("OriginalTokenBridge", () => {
         });
 
       expect(
-        await originalTokenBridge.totalValueLockedSD(weth.address),
+        await originalTokenBridge.totalValueLockedSD(weth.address)
       ).to.be.eq(amount);
       expect(await weth.balanceOf(originalTokenBridge.address)).to.be.eq(
-        amount,
+        amount
       );
     });
   });
@@ -454,7 +449,7 @@ describe("OriginalTokenBridge", () => {
     beforeEach(async () => {
       await originalTokenBridge.registerToken(
         originalToken.address,
-        sharedDecimals,
+        sharedDecimals
       );
     });
 
@@ -462,8 +457,8 @@ describe("OriginalTokenBridge", () => {
       await expect(
         originalTokenBridge.simulateNonblockingLzReceive(
           originalTokenChainId,
-          "0x",
-        ),
+          "0x"
+        )
       ).to.be.revertedWith("OriginalTokenBridge: invalid source chain id");
     });
 
@@ -472,8 +467,8 @@ describe("OriginalTokenBridge", () => {
       await expect(
         originalTokenBridge.simulateNonblockingLzReceive(
           wrappedTokenChainId,
-          createPayload(pkUnknown),
-        ),
+          createPayload(pkUnknown)
+        )
       ).to.be.revertedWith("OriginalTokenBridge: unknown packet type");
     });
 
@@ -483,14 +478,14 @@ describe("OriginalTokenBridge", () => {
       await expect(
         originalTokenBridge.simulateNonblockingLzReceive(
           wrappedTokenChainId,
-          createPayload(pkUnlock, newToken.address),
-        ),
+          createPayload(pkUnlock, newToken.address)
+        )
       ).to.be.revertedWith("OriginalTokenBridge: token is not supported");
     });
 
     it("unlocks, collects withdrawal fees and transfers funds to the recipient", async () => {
       const LDtoSD = await originalTokenBridge.LDtoSDConversionRate(
-        originalToken.address,
+        originalToken.address
       );
       const bridgingFee = (
         await originalTokenBridge.estimateBridgeFee(false, adapterParams)
@@ -514,12 +509,12 @@ describe("OriginalTokenBridge", () => {
           user.address,
           callParams,
           adapterParams,
-          { value: bridgingFee },
+          { value: bridgingFee }
         );
 
       expect(await originalToken.balanceOf(user.address)).to.be.eq(0);
       expect(
-        await originalToken.balanceOf(originalTokenBridge.address),
+        await originalToken.balanceOf(originalTokenBridge.address)
       ).to.be.eq(amount);
 
       // Receive
@@ -529,18 +524,18 @@ describe("OriginalTokenBridge", () => {
           pkUnlock,
           originalToken.address,
           withdrawalAmountSD,
-          totalAmountSD,
-        ),
+          totalAmountSD
+        )
       );
 
       expect(
-        await originalTokenBridge.totalValueLockedSD(originalToken.address),
+        await originalTokenBridge.totalValueLockedSD(originalToken.address)
       ).to.be.eq(0);
       expect(
-        await originalToken.balanceOf(originalTokenBridge.address),
+        await originalToken.balanceOf(originalTokenBridge.address)
       ).to.be.eq(withdrawalFee);
       expect(await originalToken.balanceOf(user.address)).to.be.eq(
-        withdrawalAmount,
+        withdrawalAmount
       );
     });
 
@@ -560,22 +555,22 @@ describe("OriginalTokenBridge", () => {
           value: totalAmount,
         });
       const recipientBalanceBefore = await ethers.provider.getBalance(
-        user.address,
+        user.address
       );
 
       // Receive
       await originalTokenBridge.simulateNonblockingLzReceive(
         wrappedTokenChainId,
-        createPayload(pkUnlock, weth.address, amount, amount, true),
+        createPayload(pkUnlock, weth.address, amount, amount, true)
       );
 
       expect(
-        await originalTokenBridge.totalValueLockedSD(weth.address),
+        await originalTokenBridge.totalValueLockedSD(weth.address)
       ).to.be.eq(0);
       expect(await weth.balanceOf(originalTokenBridge.address)).to.be.eq(0);
       expect(await weth.balanceOf(user.address)).to.be.eq(0);
       expect(await ethers.provider.getBalance(user.address)).to.be.eq(
-        recipientBalanceBefore.add(amount),
+        recipientBalanceBefore.add(amount)
       );
     });
   });
@@ -584,7 +579,7 @@ describe("OriginalTokenBridge", () => {
     beforeEach(async () => {
       await originalTokenBridge.registerToken(
         originalToken.address,
-        sharedDecimals,
+        sharedDecimals
       );
     });
 
@@ -592,23 +587,19 @@ describe("OriginalTokenBridge", () => {
       await expect(
         originalTokenBridge
           .connect(user)
-          .withdrawFee(originalToken.address, owner.address, 1),
+          .withdrawFee(originalToken.address, owner.address, 1)
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
 
     it("reverts when not enough fees collected", async () => {
       await expect(
-        originalTokenBridge.withdrawFee(
-          originalToken.address,
-          owner.address,
-          1,
-        ),
+        originalTokenBridge.withdrawFee(originalToken.address, owner.address, 1)
       ).to.be.revertedWith("OriginalTokenBridge: not enough fees collected");
     });
 
     it("withdraws fees", async () => {
       const LDtoSD = await originalTokenBridge.LDtoSDConversionRate(
-        originalToken.address,
+        originalToken.address
       );
       const bridgingFee = (
         await originalTokenBridge.estimateBridgeFee(false, adapterParams)
@@ -628,7 +619,7 @@ describe("OriginalTokenBridge", () => {
           user.address,
           callParams,
           adapterParams,
-          { value: bridgingFee },
+          { value: bridgingFee }
         );
       await originalTokenBridge.simulateNonblockingLzReceive(
         wrappedTokenChainId,
@@ -636,17 +627,17 @@ describe("OriginalTokenBridge", () => {
           pkUnlock,
           originalToken.address,
           withdrawalAmountSD,
-          totalAmountSD,
-        ),
+          totalAmountSD
+        )
       );
 
       await originalTokenBridge.withdrawFee(
         originalToken.address,
         owner.address,
-        withdrawalFee,
+        withdrawalFee
       );
       expect(await originalToken.balanceOf(owner.address)).to.be.eq(
-        withdrawalFee,
+        withdrawalFee
       );
     });
   });

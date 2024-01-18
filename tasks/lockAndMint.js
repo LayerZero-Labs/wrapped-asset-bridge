@@ -4,7 +4,7 @@ module.exports = async function (taskArgs, hre) {
   const amount = ethers.utils.parseUnits(taskArgs.amount, taskArgs.decimals);
   const token = await hre.ethers.getContractAt(
     ["function approve(address,uint256) public returns (bool)"],
-    taskArgs.token,
+    taskArgs.token
   );
   const bridge = await ethers.getContract("OriginalTokenBridge");
 
@@ -30,7 +30,7 @@ module.exports = async function (taskArgs, hre) {
     owner.address,
     callParams,
     "0x",
-    { value: increasedNativeFee, gasPrice: increasedGasPrice },
+    { value: increasedNativeFee, gasPrice: increasedGasPrice }
   );
   await tx.wait();
   console.log(`Bridged ${tx.hash}`);

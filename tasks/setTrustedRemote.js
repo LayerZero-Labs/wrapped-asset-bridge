@@ -8,7 +8,7 @@ module.exports = async function (taskArgs, hre) {
   const wrappedTokenBridge = await getWalletContract(
     hre,
     wrappedNetwork,
-    "WrappedTokenBridge",
+    "WrappedTokenBridge"
   );
   const wrappedTokenChainId = CHAIN_IDS[wrappedNetwork];
 
@@ -17,28 +17,28 @@ module.exports = async function (taskArgs, hre) {
     const originalTokenBridge = await getWalletContract(
       hre,
       originalNetworks[i],
-      "OriginalTokenBridge",
+      "OriginalTokenBridge"
     );
     const originalProvider = originalTokenBridge.provider;
     const gasPrice = await originalProvider.getGasPrice();
     const increasedGasPrice = gasPrice.mul(5).div(4);
 
     console.log(
-      `\n[${originalNetworks[i]}] OriginalTokenBridge at ${originalTokenBridge.address} calling setTrustedRemoteAddress(${wrappedTokenChainId}, ${wrappedTokenBridge.address})`,
+      `\n[${originalNetworks[i]}] OriginalTokenBridge at ${originalTokenBridge.address} calling setTrustedRemoteAddress(${wrappedTokenChainId}, ${wrappedTokenBridge.address})`
     );
     let tx = await originalTokenBridge.setTrustedRemoteAddress(
       wrappedTokenChainId,
       wrappedTokenBridge.address,
-      { gasPrice: increasedGasPrice },
+      { gasPrice: increasedGasPrice }
     );
     console.log(tx.hash);
 
     console.log(
-      `[${wrappedNetwork}] WrappedTokenBridge at ${wrappedTokenBridge.address} calling setTrustedRemoteAddress(${originalTokenChainId}, ${originalTokenBridge.address})`,
+      `[${wrappedNetwork}] WrappedTokenBridge at ${wrappedTokenBridge.address} calling setTrustedRemoteAddress(${originalTokenChainId}, ${originalTokenBridge.address})`
     );
     tx = await wrappedTokenBridge.setTrustedRemoteAddress(
       originalTokenChainId,
-      originalTokenBridge.address,
+      originalTokenBridge.address
     );
     console.log(tx.hash);
   }

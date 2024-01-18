@@ -10,7 +10,7 @@ module.exports = async function (taskArgs, hre) {
   const wrappedTokenBridge = await getWalletContract(
     hre,
     wrappedNetwork,
-    "WrappedTokenBridge",
+    "WrappedTokenBridge"
   );
   const wrappedProvider = wrappedTokenBridge.provider;
   const wrappedGasPrice = await wrappedProvider.getGasPrice();
@@ -22,7 +22,7 @@ module.exports = async function (taskArgs, hre) {
     const originalTokenBridge = await getWalletContract(
       hre,
       originalNetwork,
-      "OriginalTokenBridge",
+      "OriginalTokenBridge"
     );
     const originalProvider = originalTokenBridge.provider;
     const gasPrice = await originalProvider.getGasPrice();
@@ -36,23 +36,23 @@ module.exports = async function (taskArgs, hre) {
       const wrappedToken = TOKENS[wrappedNetwork][token];
 
       console.log(
-        `\n[${originalNetwork}] OriginalTokenBridge at ${originalTokenBridge.address} calling registerToken(${originalToken}, ${decimals})`,
+        `\n[${originalNetwork}] OriginalTokenBridge at ${originalTokenBridge.address} calling registerToken(${originalToken}, ${decimals})`
       );
       let tx = await originalTokenBridge.registerToken(
         originalToken,
         decimals,
-        { gasPrice: increasedGasPrice },
+        { gasPrice: increasedGasPrice }
       );
       console.log(tx.hash);
 
       console.log(
-        `[${wrappedNetwork}] WrappedTokenBridge at ${wrappedTokenBridge.address} calling registerToken(${wrappedToken}, ${originalTokenChainId}, ${originalToken})`,
+        `[${wrappedNetwork}] WrappedTokenBridge at ${wrappedTokenBridge.address} calling registerToken(${wrappedToken}, ${originalTokenChainId}, ${originalToken})`
       );
       tx = await wrappedTokenBridge.registerToken(
         wrappedToken,
         originalTokenChainId,
         originalToken,
-        { gasPrice: increasedWrappedGasPrice },
+        { gasPrice: increasedWrappedGasPrice }
       );
       console.log(tx.hash);
     }

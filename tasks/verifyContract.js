@@ -21,7 +21,7 @@ const licenseTypes = {
 function getContractInheritance(
   baseContractString,
   remainingContracts,
-  finalObj,
+  finalObj
 ) {
   let contractNamesInherited = baseContractString.match(/(import).*(;)/g);
   // we have reached the end of the inheritance as the base contract contains no more imports
@@ -50,7 +50,7 @@ function getContractInheritance(
 
   // filter out contracts that we haven't added to the finalObj yet
   let remainingContractsNew = remainingContracts.filter(
-    ([k, v]) => !Object.keys(Object.fromEntries(parentContracts)).includes(k),
+    ([k, v]) => !Object.keys(Object.fromEntries(parentContracts)).includes(k)
   );
 
   // take existing contracts and the new verified parent contracts and merge into object
@@ -82,7 +82,7 @@ function formatPutObj(
   contractBuildInfo,
   contractDeployment,
   taskArgs,
-  hre,
+  hre
 ) {
   let putObj = {
     apikey: process.env[`SCAN_API_KEY_${hre.network.name}`],
@@ -120,7 +120,7 @@ function formatPutObj(
       ["inputs"].map((x) => x["type"]);
     constructorAbiEncoded = ethers.utils.defaultAbiCoder.encode(
       constructorTypes,
-      contractDeployment["args"],
+      contractDeployment["args"]
     );
   }
 
@@ -133,10 +133,10 @@ function formatPutObj(
 
 function getBaseAndRemainingContract(contractName, contractBuildInfo) {
   const baseContract = Object.entries(
-    contractBuildInfo["input"]["sources"],
+    contractBuildInfo["input"]["sources"]
   ).filter(([k, v]) => k.includes(contractName))[0];
   const remainingContracts = Object.entries(
-    contractBuildInfo["input"]["sources"],
+    contractBuildInfo["input"]["sources"]
   ).filter(([k, v]) => !k.includes(contractName));
   return [baseContract, remainingContracts];
 }
@@ -148,18 +148,18 @@ module.exports = async function (taskArgs, hre) {
   const contractDeployment = JSON.parse(
     FileSystem.readFileSync(
       `./deployments/${hre.network.name}/${taskArgs.contract}.json`,
-      "utf8",
-    ),
+      "utf8"
+    )
   );
   // iterate the build-info to find the correct build file
   let contractBuildInfo;
   FileSystem.readdirSync(`./artifacts/build-info/`).forEach((fileName) => {
     const f = JSON.parse(
-      FileSystem.readFileSync(`./artifacts/build-info/${fileName}`, "utf8"),
+      FileSystem.readFileSync(`./artifacts/build-info/${fileName}`, "utf8")
     );
 
     let test = Object.entries(f["input"]["sources"]).filter(([k, v]) =>
-      k.includes(contractName),
+      k.includes(contractName)
     );
     if (test[0] && test[0][0]) {
       if (test[0][0].includes(contractName)) {
@@ -171,19 +171,19 @@ module.exports = async function (taskArgs, hre) {
     throw `Could not find contract: ${contractName} inside of build-info!`;
 
   console.log(
-    `\n\nVerifying... Network: ${hre.network.name}, contractName: ${contractName}, address: ${contractDeployment["address"]}`,
+    `\n\nVerifying... Network: ${hre.network.name}, contractName: ${contractName}, address: ${contractDeployment["address"]}`
   );
 
   // parse and filter out the extra build files, because the verifier freaks out if too many contracts to check
   const [baseContract, remainingContracts] = getBaseAndRemainingContract(
     contractName,
-    contractBuildInfo,
+    contractBuildInfo
   );
 
   contractBuildInfo["input"]["sources"] = getContractInheritance(
     baseContract[1]["content"],
     remainingContracts,
-    Object.fromEntries([baseContract]),
+    Object.fromEntries([baseContract])
   );
 
   // format the put request
@@ -192,7 +192,7 @@ module.exports = async function (taskArgs, hre) {
     contractBuildInfo,
     contractDeployment,
     taskArgs,
-    hre,
+    hre
   );
   // console.log(`=++++++++=`)
   // console.log(putObj.sourceCode)

@@ -8,7 +8,7 @@ module.exports = async function (taskArgs, hre) {
   const wrappedTokenBridge = await getWalletContract(
     hre,
     wrappedNetwork,
-    "WrappedTokenBridge",
+    "WrappedTokenBridge"
   );
   let tx = await wrappedTokenBridge.transferOwnership(newOwner);
   console.log(`[${wrappedNetwork}] transferOwnership tx ${tx.hash}`);
@@ -18,7 +18,7 @@ module.exports = async function (taskArgs, hre) {
     const originalTokenBridge = await getWalletContract(
       hre,
       originalNetwork,
-      "OriginalTokenBridge",
+      "OriginalTokenBridge"
     );
     tx = await originalTokenBridge.transferOwnership(newOwner);
     console.log(`[${originalNetwork}] transferOwnership tx ${tx.hash}`);

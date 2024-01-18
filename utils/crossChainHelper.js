@@ -14,7 +14,7 @@ const getDeploymentManager = (hre, networkName) => {
       networkName,
       hre.config.networks[networkName],
       hre.config.paths,
-      hre.artifacts,
+      hre.artifacts
     ),
     saveDeployments: true,
   };
@@ -45,7 +45,7 @@ const getProvider = (hre, network) => {
   if (!providerByNetwork[network]) {
     const networkUrl = hre.config.networks[network].url;
     providerByNetwork[network] = new ethers.providers.JsonRpcProvider(
-      networkUrl,
+      networkUrl
     );
   }
   return providerByNetwork[network];
@@ -82,7 +82,7 @@ const getContractFactory = async (hre, contractName) => {
     const artifacts = await hre.artifacts.readArtifactSync(contractName);
     contractFactories[contractName] = new ethers.ContractFactory(
       artifacts.abi,
-      artifacts.bytecode,
+      artifacts.bytecode
     );
   }
   return contractFactories[contractName];
@@ -106,7 +106,7 @@ const getWalletContract = async (
   hre,
   network,
   contractName,
-  walletIndex = 0,
+  walletIndex = 0
 ) => {
   const contract = await getContract(hre, network, contractName);
   const wallet = getConnectedWallet(hre, network, walletIndex);

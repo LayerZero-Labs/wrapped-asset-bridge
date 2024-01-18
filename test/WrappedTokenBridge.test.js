@@ -17,14 +17,14 @@ describe("WrappedTokenBridge", () => {
   const createPayload = (pk = pkMint, token = originalToken.address) =>
     utils.defaultAbiCoder.encode(
       ["uint8", "address", "address", "uint256"],
-      [pk, token, user.address, amount],
+      [pk, token, user.address, amount]
     );
 
   beforeEach(async () => {
     [owner, user] = await ethers.getSigners();
 
     const endpointFactory = await ethers.getContractFactory(
-      "LayerZeroEndpointStub",
+      "LayerZeroEndpointStub"
     );
     const originalTokenEndpoint = await endpointFactory.deploy();
     wrappedTokenEndpoint = await endpointFactory.deploy();
@@ -32,19 +32,19 @@ describe("WrappedTokenBridge", () => {
     const wethFactory = await ethers.getContractFactory("WETH9");
     const weth = await wethFactory.deploy();
     const originalTokenBridgeFactory = await ethers.getContractFactory(
-      "OriginalTokenBridge",
+      "OriginalTokenBridge"
     );
     const originalTokenBridge = await originalTokenBridgeFactory.deploy(
       originalTokenEndpoint.address,
       wrappedTokenChainId,
-      weth.address,
+      weth.address
     );
 
     wrappedTokenBridgeFactory = await ethers.getContractFactory(
-      "WrappedTokenBridgeHarness",
+      "WrappedTokenBridgeHarness"
     );
     wrappedTokenBridge = await wrappedTokenBridgeFactory.deploy(
-      wrappedTokenEndpoint.address,
+      wrappedTokenEndpoint.address
     );
 
     const ERC20Factory = await ethers.getContractFactory("MintableERC20Mock");
@@ -56,12 +56,12 @@ describe("WrappedTokenBridge", () => {
       wrappedTokenBridge.address,
       "WTEST",
       "WTEST",
-      originalERC20Decimals,
+      originalERC20Decimals
     );
 
     await wrappedTokenBridge.setTrustedRemoteAddress(
       originalTokenChainId,
-      originalTokenBridge.address,
+      originalTokenBridge.address
     );
 
     callParams = {
@@ -84,8 +84,8 @@ describe("WrappedTokenBridge", () => {
           .registerToken(
             wrappedToken.address,
             originalTokenChainId,
-            originalToken.address,
-          ),
+            originalToken.address
+          )
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
 
@@ -94,8 +94,8 @@ describe("WrappedTokenBridge", () => {
         wrappedTokenBridge.registerToken(
           constants.AddressZero,
           originalTokenChainId,
-          originalToken.address,
-        ),
+          originalToken.address
+        )
       ).to.be.revertedWith("WrappedTokenBridge: invalid local token");
     });
 
@@ -104,8 +104,8 @@ describe("WrappedTokenBridge", () => {
         wrappedTokenBridge.registerToken(
           wrappedToken.address,
           originalTokenChainId,
-          constants.AddressZero,
-        ),
+          constants.AddressZero
+        )
       ).to.be.revertedWith("WrappedTokenBridge: invalid remote token");
     });
 
@@ -113,14 +113,14 @@ describe("WrappedTokenBridge", () => {
       await wrappedTokenBridge.registerToken(
         wrappedToken.address,
         originalTokenChainId,
-        originalToken.address,
+        originalToken.address
       );
       await expect(
         wrappedTokenBridge.registerToken(
           wrappedToken.address,
           originalTokenChainId,
-          originalToken.address,
-        ),
+          originalToken.address
+        )
       ).to.be.revertedWith("WrappedTokenBridge: token already registered");
     });
 
@@ -128,20 +128,20 @@ describe("WrappedTokenBridge", () => {
       await wrappedTokenBridge.registerToken(
         wrappedToken.address,
         originalTokenChainId,
-        originalToken.address,
+        originalToken.address
       );
 
       expect(
         await wrappedTokenBridge.localToRemote(
           wrappedToken.address,
-          originalTokenChainId,
-        ),
+          originalTokenChainId
+        )
       ).to.be.eq(originalToken.address);
       expect(
         await wrappedTokenBridge.remoteToLocal(
           originalToken.address,
-          originalTokenChainId,
-        ),
+          originalTokenChainId
+        )
       ).to.be.eq(wrappedToken.address);
     });
   });
@@ -150,20 +150,20 @@ describe("WrappedTokenBridge", () => {
     const withdrawalFeeBps = 10;
     it("reverts when fee bps is greater than or equal to 100%", async () => {
       await expect(
-        wrappedTokenBridge.setWithdrawalFeeBps(10000),
+        wrappedTokenBridge.setWithdrawalFeeBps(10000)
       ).to.be.revertedWith("WrappedTokenBridge: invalid withdrawal fee");
     });
 
     it("reverts when called by non owner", async () => {
       await expect(
-        wrappedTokenBridge.connect(user).setWithdrawalFeeBps(withdrawalFeeBps),
+        wrappedTokenBridge.connect(user).setWithdrawalFeeBps(withdrawalFeeBps)
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
 
     it("sets withdrawal fee bps", async () => {
       await wrappedTokenBridge.setWithdrawalFeeBps(withdrawalFeeBps);
       expect(await wrappedTokenBridge.withdrawalFeeBps()).to.be.eq(
-        withdrawalFeeBps,
+        withdrawalFeeBps
       );
     });
   });
@@ -174,8 +174,8 @@ describe("WrappedTokenBridge", () => {
       await expect(
         wrappedTokenBridge.simulateNonblockingLzReceive(
           originalTokenChainId,
-          createPayload(pkInvalid),
-        ),
+          createPayload(pkInvalid)
+        )
       ).to.be.revertedWith("WrappedTokenBridge: unknown packet type");
     });
 
@@ -183,8 +183,8 @@ describe("WrappedTokenBridge", () => {
       await expect(
         wrappedTokenBridge.simulateNonblockingLzReceive(
           originalTokenChainId,
-          createPayload(),
-        ),
+          createPayload()
+        )
       ).to.be.revertedWith("WrappedTokenBridge: token is not supported");
     });
 
@@ -192,11 +192,11 @@ describe("WrappedTokenBridge", () => {
       await wrappedTokenBridge.registerToken(
         wrappedToken.address,
         originalTokenChainId,
-        originalToken.address,
+        originalToken.address
       );
       await wrappedTokenBridge.simulateNonblockingLzReceive(
         originalTokenChainId,
-        createPayload(),
+        createPayload()
       );
 
       expect(await wrappedToken.totalSupply()).to.be.eq(amount);
@@ -204,8 +204,8 @@ describe("WrappedTokenBridge", () => {
       expect(
         await wrappedTokenBridge.totalValueLocked(
           originalTokenChainId,
-          originalToken.address,
-        ),
+          originalToken.address
+        )
       ).to.be.eq(amount);
     });
   });
@@ -217,7 +217,7 @@ describe("WrappedTokenBridge", () => {
         await wrappedTokenBridge.estimateBridgeFee(
           originalTokenChainId,
           false,
-          adapterParams,
+          adapterParams
         )
       ).nativeFee;
     });
@@ -234,8 +234,8 @@ describe("WrappedTokenBridge", () => {
             false,
             callParams,
             adapterParams,
-            { value: fee },
-          ),
+            { value: fee }
+          )
       ).to.be.revertedWith("WrappedTokenBridge: invalid token");
     });
 
@@ -251,15 +251,15 @@ describe("WrappedTokenBridge", () => {
             false,
             callParams,
             adapterParams,
-            { value: fee },
-          ),
+            { value: fee }
+          )
       ).to.be.revertedWith("WrappedTokenBridge: invalid to");
     });
 
     it("reverts when useCustomAdapterParams is false and non-empty adapterParams are passed", async () => {
       const adapterParamsV1 = ethers.utils.solidityPack(
         ["uint16", "uint256"],
-        [1, 200000],
+        [1, 200000]
       );
       await expect(
         wrappedTokenBridge
@@ -272,8 +272,8 @@ describe("WrappedTokenBridge", () => {
             false,
             callParams,
             adapterParamsV1,
-            { value: fee },
-          ),
+            { value: fee }
+          )
       ).to.be.revertedWith("TokenBridgeBase: adapterParams must be empty");
     });
 
@@ -289,8 +289,8 @@ describe("WrappedTokenBridge", () => {
             false,
             callParams,
             adapterParams,
-            { value: fee },
-          ),
+            { value: fee }
+          )
       ).to.be.revertedWith("WrappedTokenBridge: token is not supported");
     });
 
@@ -298,7 +298,7 @@ describe("WrappedTokenBridge", () => {
       await wrappedTokenBridge.registerToken(
         wrappedToken.address,
         originalTokenChainId,
-        originalToken.address,
+        originalToken.address
       );
       await expect(
         wrappedTokenBridge
@@ -311,8 +311,8 @@ describe("WrappedTokenBridge", () => {
             false,
             callParams,
             adapterParams,
-            { value: fee },
-          ),
+            { value: fee }
+          )
       ).to.be.revertedWith("WrappedTokenBridge: invalid amount");
     });
 
@@ -320,13 +320,13 @@ describe("WrappedTokenBridge", () => {
       await wrappedTokenBridge.registerToken(
         wrappedToken.address,
         originalTokenChainId,
-        originalToken.address,
+        originalToken.address
       );
 
       // Tokens minted
       await wrappedTokenBridge.simulateNonblockingLzReceive(
         originalTokenChainId,
-        createPayload(),
+        createPayload()
       );
 
       expect(await wrappedToken.totalSupply()).to.be.eq(amount);
@@ -334,8 +334,8 @@ describe("WrappedTokenBridge", () => {
       expect(
         await wrappedTokenBridge.totalValueLocked(
           originalTokenChainId,
-          originalToken.address,
-        ),
+          originalToken.address
+        )
       ).to.be.eq(amount);
 
       // Tokens burned
@@ -349,7 +349,7 @@ describe("WrappedTokenBridge", () => {
           false,
           callParams,
           adapterParams,
-          { value: fee },
+          { value: fee }
         );
 
       expect(await wrappedToken.totalSupply()).to.be.eq(0);
@@ -357,8 +357,8 @@ describe("WrappedTokenBridge", () => {
       expect(
         await wrappedTokenBridge.totalValueLocked(
           originalTokenChainId,
-          originalToken.address,
-        ),
+          originalToken.address
+        )
       ).to.be.eq(0);
     });
   });

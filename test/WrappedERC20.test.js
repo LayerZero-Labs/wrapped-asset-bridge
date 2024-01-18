@@ -20,13 +20,13 @@ describe("WrappedERC20", () => {
       bridge.address,
       name,
       symbol,
-      decimals,
+      decimals
     );
   });
 
   it("reverts when passing address zero in the constructor", async () => {
     await expect(
-      wrappedTokenFactory.deploy(constants.AddressZero, name, symbol, decimals),
+      wrappedTokenFactory.deploy(constants.AddressZero, name, symbol, decimals)
     ).to.be.revertedWith("WrappedERC20: invalid bridge");
   });
 
@@ -36,7 +36,7 @@ describe("WrappedERC20", () => {
       bridge.address,
       name,
       symbol,
-      customDecimals,
+      customDecimals
     );
     expect(await wrappedToken.decimals()).to.be.eq(customDecimals);
   });
@@ -44,7 +44,7 @@ describe("WrappedERC20", () => {
   describe("mint", () => {
     it("reverts when called not by the bridge", async () => {
       await expect(wrappedToken.mint(owner.address, amount)).to.be.revertedWith(
-        "WrappedERC20: caller is not the bridge",
+        "WrappedERC20: caller is not the bridge"
       );
     });
 
@@ -62,7 +62,7 @@ describe("WrappedERC20", () => {
 
     it("reverts when called not by the bridge", async () => {
       await expect(wrappedToken.burn(owner.address, amount)).to.be.revertedWith(
-        "WrappedERC20: caller is not the bridge",
+        "WrappedERC20: caller is not the bridge"
       );
     });
 

@@ -7,27 +7,27 @@ module.exports = async function (taskArgs, hre) {
   const originalTokenBridge = await getWalletContract(
     hre,
     originalNetwork,
-    "OriginalTokenBridge",
+    "OriginalTokenBridge"
   );
 
   const wrappedNetwork = taskArgs.wrappedNetwork;
   const wrappedTokenBridge = await getWalletContract(
     hre,
     wrappedNetwork,
-    "WrappedTokenBridge",
+    "WrappedTokenBridge"
   );
 
   console.log(
-    `\n[${originalNetwork}] OriginalTokenBridge at ${originalTokenBridge.address} calling registerToken(${taskArgs.originalToken})`,
+    `\n[${originalNetwork}] OriginalTokenBridge at ${originalTokenBridge.address} calling registerToken(${taskArgs.originalToken})`
   );
   await originalTokenBridge.registerToken(taskArgs.originalToken);
 
   console.log(
-    `\n[${wrappedNetwork}] WrappedTokenBridge at ${wrappedTokenBridge.address} calling registerToken(${taskArgs.wrappedToken}, ${originalTokenChainId}, ${taskArgs.originalToken})`,
+    `\n[${wrappedNetwork}] WrappedTokenBridge at ${wrappedTokenBridge.address} calling registerToken(${taskArgs.wrappedToken}, ${originalTokenChainId}, ${taskArgs.originalToken})`
   );
   await wrappedTokenBridge.registerToken(
     taskArgs.wrappedToken,
     originalTokenChainId,
-    taskArgs.originalToken,
+    taskArgs.originalToken
   );
 };

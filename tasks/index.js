@@ -1,15 +1,15 @@
 task(
   "deployBridges",
   "deploys OriginalTokenBridge to multiple networks and WrappedTokenBridge to a wrapped token chain",
-  require("./deployBridges"),
+  require("./deployBridges")
 )
   .addParam(
     "originalNetworks",
-    "comma separated list of networks where OriginalTokenBridge contract is deployed",
+    "comma separated list of networks where OriginalTokenBridge contract is deployed"
   )
   .addParam(
     "wrappedNetwork",
-    "name of the network where WrappedTokenBridge is deployed",
+    "name of the network where WrappedTokenBridge is deployed"
   );
 // npx hardhat deployBridges --original-networks "goerli,bsc-testnet,mumbai" --wrapped-network "coredao-testnet"
 // npx hardhat deployBridges --original-networks "ethereum,bsc,polygon" --wrapped-network "coredao"
@@ -17,40 +17,40 @@ task(
 task(
   "deployMockTokens",
   "deploys Mock tokens to multiple networks",
-  require("./deployMockTokens"),
+  require("./deployMockTokens")
 ).addParam(
   "originalNetworks",
-  "comma separated list of networks where mock tokens contract is deployed",
+  "comma separated list of networks where mock tokens contract is deployed"
 );
 // npx hardhat deployTestTokens --original-networks "goerli,bsc-testnet,mumbai"
 
 task(
   "setTrustedRemote",
   "calls setTrustedRemoteAddress in OriginalTokenBridge on multiple networks and in WrappedTokenBridge on a wrapped token chain",
-  require("./setTrustedRemote"),
+  require("./setTrustedRemote")
 )
   .addParam(
     "originalNetworks",
-    "comma separated list of networks where OriginalTokenBridge contract is deployed",
+    "comma separated list of networks where OriginalTokenBridge contract is deployed"
   )
   .addParam(
     "wrappedNetwork",
-    "name of the network where WrappedTokenBridge is deployed",
+    "name of the network where WrappedTokenBridge is deployed"
   );
 // npx hardhat setTrustedRemote --original-networks "goerli,bsc-testnet,mumbai" --wrapped-network "coredao-testnet"
 
 task(
   "registerToken",
   "calls registerToken in OriginalTokenBridge and WrappedTokenBridge",
-  require("./registerToken"),
+  require("./registerToken")
 )
   .addParam(
     "originalNetwork",
-    "name of the network where OriginalTokenBridge is deployed",
+    "name of the network where OriginalTokenBridge is deployed"
   )
   .addParam(
     "wrappedNetwork",
-    "name of the network where WrappedTokenBridge is deployed",
+    "name of the network where WrappedTokenBridge is deployed"
   )
   .addParam("originalToken", "original token address")
   .addParam("wrappedToken", "wrapped token address");
@@ -61,15 +61,15 @@ task(
 task(
   "registerTokens",
   "calls registerToken in OriginalTokenBridge and WrappedTokenBridge",
-  require("./registerTokens"),
+  require("./registerTokens")
 )
   .addParam(
     "originalNetworks",
-    "comma separated list of networks where original tokens are deployed",
+    "comma separated list of networks where original tokens are deployed"
   )
   .addParam(
     "wrappedNetwork",
-    "name of the network where wrapped tokens are deployed",
+    "name of the network where wrapped tokens are deployed"
   )
   .addParam("tokens", "comma separated list of tokens to register");
 // npx hardhat registerTokens --original-networks "goerli,bsc-testnet,mumbai" --wrapped-network "coredao-testnet" --tokens "WETH,USDC"
@@ -77,7 +77,7 @@ task(
 task(
   "lockAndMint",
   "bridges original token to wrapped network",
-  require("./lockAndMint"),
+  require("./lockAndMint")
 )
   .addParam("amount", "amount to bridge")
   .addParam("token", "token address")
@@ -87,11 +87,11 @@ task(
 task(
   "burnAndUnlock",
   "bridges wrapped token to original network",
-  require("./burnAndUnlock"),
+  require("./burnAndUnlock")
 )
   .addParam(
     "originalNetwork",
-    "name of the network where OriginalTokenBridge is deployed",
+    "name of the network where OriginalTokenBridge is deployed"
   )
   .addParam("amount", "amount to bridge")
   .addParam("token", "token address")
@@ -101,18 +101,18 @@ task(
 task(
   "lockAndMintETH",
   "bridges original token to wrapped network",
-  require("./lockAndMintETH"),
+  require("./lockAndMintETH")
 ).addParam("amount", "amount to bridge");
 // npx hardhat lockAndMintETH --amount "0.001" --network "goerli"
 
 task(
   "burnAndUnlockETH",
   "bridges wrapped token to original network",
-  require("./burnAndUnlockETH"),
+  require("./burnAndUnlockETH")
 )
   .addParam(
     "originalNetwork",
-    "name of the network where OriginalTokenBridge is deployed",
+    "name of the network where OriginalTokenBridge is deployed"
   )
   .addParam("amount", "amount to bridge");
 // npx hardhat burnAndUnlockETH --amount "0.001" --original-network "goerli" --network "coredao-testnet"
@@ -120,15 +120,15 @@ task(
 task(
   "transferOwnership",
   "transfers bridges ownership",
-  require("./transferOwnership"),
+  require("./transferOwnership")
 )
   .addParam(
     "originalNetworks",
-    "comma separated list of networks where original tokens are deployed",
+    "comma separated list of networks where original tokens are deployed"
   )
   .addParam(
     "wrappedNetwork",
-    "name of the network where wrapped tokens are deployed",
+    "name of the network where wrapped tokens are deployed"
   )
   .addParam("newOwner", "new owner");
 // npx hardhat transferOwnership --new-owner "0x1b2B4F723e1579db0981d826017E3eaeb77Bb493" --original-networks "goerli,bsc-testnet,mumbai" --wrapped-network "coredao-testnet"
@@ -136,6 +136,6 @@ task(
 task(
   "verifyContract",
   "verifies a deployed contract",
-  require("./verifyContract"),
+  require("./verifyContract")
 ).addParam("contract", "contract name");
 // npx hardhat verifyContract --contract "OriginalTokenBridge" --network "ethereum"

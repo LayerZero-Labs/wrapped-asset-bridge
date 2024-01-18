@@ -27,7 +27,7 @@ module.exports = async function (taskArgs, hre) {
     false,
     callParams,
     "0x",
-    { value: increasedNativeFee },
+    { value: increasedNativeFee }
   );
   await tx.wait();
   console.log(`Bridged ${tx.hash}`);
