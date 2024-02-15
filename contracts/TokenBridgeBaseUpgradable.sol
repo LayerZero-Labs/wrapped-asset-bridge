@@ -7,7 +7,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
 /// @dev An abstract contract containing a common functionality used by OriginalTokenBridge and WrappedTokenBridge
-abstract contract TokenBridgeBaseUpgradable is NonblockingLzAppUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeable, PausableUpgradeable {
+abstract contract TokenBridgeBaseUpgradable is NonblockingLzAppUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeable {
     /// @notice A packet type used to identify messages requesting minting of wrapped tokens
     uint8 public constant PT_MINT = 0;
 
@@ -22,7 +22,6 @@ abstract contract TokenBridgeBaseUpgradable is NonblockingLzAppUpgradeable, Reen
         __NonblockingLzAppUpgradeable_init(_endpoint);
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
-        __Pausable_init();
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -51,12 +50,4 @@ abstract contract TokenBridgeBaseUpgradable is NonblockingLzAppUpgradeable, Reen
 
     /// @dev Function that should revert when `msg.sender` is not authorized to upgrade the contract. Called by {upgradeTo} and {upgradeToAndCall}.
     function _authorizeUpgrade(address newImplemantation) internal override onlyOwner {}
-
-    function pause() public onlyOwner {
-        _pause();
-    }
-
-    function unpause() public onlyOwner {
-        _unpause();
-    }
 }

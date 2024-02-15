@@ -26,13 +26,18 @@ contract WrappedTokenBridgeUpgradable is TokenBridgeBaseUpgradable {
     /// @dev [remote chain] => [remote token] => [bridged amount]
     mapping(uint16 => mapping(address => uint)) public totalValueLocked;
 
+    bool private _paused;
+
     event WrapToken(address localToken, address remoteToken, uint16 remoteChainId, address to, uint amount);
     event UnwrapToken(address localToken, address remoteToken, uint16 remoteChainId, address to, uint amount);
     event RegisterToken(address localToken, uint16 remoteChainId, address remoteToken);
     event SetWithdrawalFeeBps(uint16 withdrawalFeeBps);
+    event Paused(address account);
+    event Unpaused(address account);
 
     function __WrappedTokenBridgeBaseUpgradable_init(address _endpoint) internal onlyInitializing {
         __TokenBridgeBaseUpgradable_init(_endpoint);
+        _paused = false;
     }
 
     function initialize(address _endpoint) external virtual initializer {
@@ -100,5 +105,83 @@ contract WrappedTokenBridgeUpgradable is TokenBridgeBaseUpgradable {
         IWrappedERC20(localToken).mint(to, amount);
 
         emit WrapToken(localToken, remoteToken, srcChainId, to, amount);
+    }
+
+    /**
+     * @dev Modifier to make a function callable only when the contract is not paused.
+     *
+     * Requirements:
+     *
+     * - The contract must not be paused.
+     */
+    modifier whenNotPaused() {
+        _requireNotPaused();
+        _;
+    }
+
+    /**
+     * @dev Modifier to make a function callable only when the contract is paused.
+     *
+     * Requirements:
+     *
+     * - The contract must be paused.
+     */
+    modifier whenPaused() {
+        _requirePaused();
+        _;
+    }
+
+    /**
+     * @dev Returns true if the contract is paused, and false otherwise.
+     */
+    function paused() public view virtual returns (bool) {
+        return _paused;
+    }
+
+    /**
+     * @dev Throws if the contract is paused.
+     */
+    function _requireNotPaused() internal view virtual {
+        require(!paused(), "Pausable: paused");
+    }
+
+    /**
+     * @dev Throws if the contract is not paused.
+     */
+    function _requirePaused() internal view virtual {
+        require(paused(), "Pausable: not paused");
+    }
+
+    /**
+     * @dev Triggers stopped state.
+     *
+     * Requirements:
+     *
+     * - The contract must not be paused.
+     */
+    function _pause() internal virtual whenNotPaused {
+        _paused = true;
+        emit Paused(_msgSender());
+    }
+
+    /**
+     * @dev Returns to normal state.
+     *
+     * Requirements:
+     *
+     * - The contract must be paused.
+     */
+    function _unpause() internal virtual whenPaused {
+        _paused = false;
+        emit Unpaused(_msgSender());
+    }
+
+    /// @dev Pauses the contract
+    function pause() public onlyOwner {
+        _pause();
+    }
+
+    function unpause() public onlyOwner {
+        _unpause();
     }
 }
