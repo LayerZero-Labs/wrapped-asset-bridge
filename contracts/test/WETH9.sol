@@ -10,7 +10,11 @@ contract WETH9 {
     mapping(address => mapping(address => uint)) public allowance;
 
     event Transfer(address indexed _from, address indexed _to, uint _value);
-    event Approval(address indexed _owner, address indexed _spender, uint _value);
+    event Approval(
+        address indexed _owner,
+        address indexed _spender,
+        uint _value
+    );
     event Deposit(address indexed from, uint amount);
     event Withdrawal(address indexed to, uint amount);
 
@@ -44,11 +48,18 @@ contract WETH9 {
         return transferFrom(msg.sender, dst, wad);
     }
 
-    function transferFrom(address src, address dst, uint wad) public returns (bool) {
+    function transferFrom(
+        address src,
+        address dst,
+        uint wad
+    ) public returns (bool) {
         require(balanceOf[src] >= wad, "transferFrom: not enough balance");
 
         if (src != msg.sender && allowance[src][msg.sender] != type(uint).max) {
-            require(allowance[src][msg.sender] >= wad, "transferFrom: not enough allowance");
+            require(
+                allowance[src][msg.sender] >= wad,
+                "transferFrom: not enough allowance"
+            );
             allowance[src][msg.sender] -= wad;
         }
 

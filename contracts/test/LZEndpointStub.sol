@@ -5,19 +5,44 @@ import "@layerzerolabs/solidity-examples/contracts/mocks/LZEndpointMock.sol";
 import "@layerzerolabs/solidity-examples/contracts/interfaces/ILayerZeroEndpoint.sol";
 
 contract LayerZeroEndpointStub is ILayerZeroEndpoint {
-    function setConfig(uint16 _version, uint16 _chainId, uint _configType, bytes calldata _config) external {}
+    function setConfig(
+        uint16 _version,
+        uint16 _chainId,
+        uint _configType,
+        bytes calldata _config
+    ) external {}
 
     function setSendVersion(uint16 _version) external {}
 
     function setReceiveVersion(uint16 _version) external {}
 
-    function forceResumeReceive(uint16 _srcChainId, bytes calldata _srcAddress) external {}
+    function forceResumeReceive(
+        uint16 _srcChainId,
+        bytes calldata _srcAddress
+    ) external {}
 
-    function send(uint16 _dstChainId, bytes calldata _destination, bytes calldata _payload, address payable _refundAddress, address _zroPaymentAddress, bytes calldata _adapterParams) external payable {}
+    function send(
+        uint16 _dstChainId,
+        bytes calldata _destination,
+        bytes calldata _payload,
+        address payable _refundAddress,
+        address _zroPaymentAddress,
+        bytes calldata _adapterParams
+    ) external payable {}
 
-    function receivePayload(uint16 _srcChainId, bytes calldata _srcAddress, address _dstAddress, uint64 _nonce, uint _gasLimit, bytes calldata _payload) external {}
+    function receivePayload(
+        uint16 _srcChainId,
+        bytes calldata _srcAddress,
+        address _dstAddress,
+        uint64 _nonce,
+        uint _gasLimit,
+        bytes calldata _payload
+    ) external {}
 
-    function getInboundNonce(uint16, bytes calldata) external pure returns (uint64) {
+    function getInboundNonce(
+        uint16,
+        bytes calldata
+    ) external pure returns (uint64) {
         return 0;
     }
 
@@ -25,16 +50,29 @@ contract LayerZeroEndpointStub is ILayerZeroEndpoint {
         return 0;
     }
 
-    function estimateFees(uint16, address, bytes calldata, bool, bytes calldata) external pure returns (uint nativeFee, uint zroFee) {
+    function estimateFees(
+        uint16,
+        address,
+        bytes calldata,
+        bool,
+        bytes calldata
+    ) external pure returns (uint nativeFee, uint zroFee) {
         nativeFee = 10000;
         zroFee = 0;
     }
 
     function getChainId() external view returns (uint16) {}
 
-    function retryPayload(uint16 _srcChainId, bytes calldata _srcAddress, bytes calldata _payload) external {}
+    function retryPayload(
+        uint16 _srcChainId,
+        bytes calldata _srcAddress,
+        bytes calldata _payload
+    ) external {}
 
-    function hasStoredPayload(uint16, bytes calldata) external pure returns (bool) {
+    function hasStoredPayload(
+        uint16,
+        bytes calldata
+    ) external pure returns (bool) {
         return false;
     }
 
@@ -54,7 +92,12 @@ contract LayerZeroEndpointStub is ILayerZeroEndpoint {
         return false;
     }
 
-    function getConfig(uint16, uint16, address, uint) external pure returns (bytes memory) {
+    function getConfig(
+        uint16,
+        uint16,
+        address,
+        uint
+    ) external pure returns (bytes memory) {
         return "0x";
     }
 
