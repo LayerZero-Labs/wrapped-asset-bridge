@@ -68,7 +68,7 @@ contract WrappedTokenBridgeUpgradable is TokenBridgeBaseUpgradable {
 
     /// @notice Bridges `localToken` to the remote chain
     /// @dev Burns wrapped tokens and sends LZ message to the remote chain to unlock original tokens
-    function bridge(address localToken, uint16 remoteChainId, uint amount, address to, bool unwrapWeth, LzLib.CallParams calldata callParams, bytes memory adapterParams) external payable nonReentrant whenNotPaused {
+    function bridge(address localToken, uint16 remoteChainId, uint amount, address to, bool unwrapWeth, LzLib.CallParams calldata callParams, bytes memory adapterParams) external payable nonReentrant virtual whenNotPaused {
         require(localToken != address(0), "WrappedTokenBridge: invalid token");
         require(to != address(0), "WrappedTokenBridge: invalid to");
         require(amount > 0, "WrappedTokenBridge: invalid amount");

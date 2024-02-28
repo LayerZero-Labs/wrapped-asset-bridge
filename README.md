@@ -1,21 +1,7 @@
-<div align="center">
-    <img alt="LayerZero" src="resources/LayerZeroLogo.png"/>
-</div>
 
----
+# Fuse V2 Bridge
 
-# Wrapped Asset Bridge
-
-Wrapped asset bridge allows bridging `ERC20` tokens and native gas tokens (e.g. `ETH`) from existing EVM chains (e.g. Ethereum, Avalanche, BSC, etc.) to subnets or brand new EVM chains where those assets do not exist natively. It supports mapping the same wrapped token to multiple tokens on other chains. E.g. moving native USDC from Ethereum or Avalanche to NewChainX will result in the same wrapped asset on NewChainX. 
-
-
-<br>
-
-
-[badge-warning]: https://github.com/Mqxx/GitHub-Markdown/blob/main/blockquotes/badge/dark-theme/warning.svg 'Warning'
-
-> ![badge-warning][badge-warning]<br>
-> The bridge is not intended for bridging between existing L1 EVM chains (e.g. between Ethereum and Avalanche)
+Wrapped asset bridge allows bridging `ERC20` tokens and native gas tokens (e.g. `ETH`) from existing EVM chains (e.g. Ethereum, Avalanche, BSC, etc.) to subnets or brand new EVM chains where those assets do not exist natively. It supports mapping the same wrapped token to multiple tokens on other chains. E.g. moving native USDC from Ethereum or Avalanche to NewChainX will result in the same wrapped asset on NewChainX.
 
 <br>
 
