@@ -4,10 +4,10 @@ pragma solidity ^0.8.17;
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC20Burnable} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 
-/// @title Wrapped ERC20
+/// @title Wrapped ERC20Burnable
 /// @notice Represents a token on another chain
-/// @dev Can be minted and burned only by the bridge
-contract WrappedERC20Burnable is ERC20, ERC20Burnable {
+/// @dev Can be minted only by the bridge
+contract WrappedERC20Burnable is ERC20Burnable {
     address public immutable bridge;
     uint8 private immutable _tokenDecimals;
 
@@ -23,7 +23,7 @@ contract WrappedERC20Burnable is ERC20, ERC20Burnable {
     }
 
     modifier onlyBridge() {
-        require(msg.sender == bridge, "WrappedERC20: caller is not the bridge");
+        require(msg.sender == bridge, "WrappedERC20Burnable: caller is not the bridge");
         _;
     }
 
