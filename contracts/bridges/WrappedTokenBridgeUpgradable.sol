@@ -4,7 +4,7 @@ pragma solidity ^0.8.17;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {LzLib} from "@layerzerolabs/solidity-examples/contracts/libraries/LzLib.sol";
 import {TokenBridgeBaseUpgradable} from "./TokenBridgeBaseUpgradable.sol";
-import {IWrappedERC20} from "./interfaces/IWrappedERC20.sol";
+import {IWrappedERC20} from "../interfaces/IWrappedERC20.sol";
 
 /// @dev Mints a wrapped token when a message received from a remote chain and burns a wrapped token when bridging to a remote chain
 contract WrappedTokenBridgeUpgradable is TokenBridgeBaseUpgradable {

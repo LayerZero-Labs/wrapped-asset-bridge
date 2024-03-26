@@ -5,7 +5,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {LzLib} from "@layerzerolabs/solidity-examples/contracts/libraries/LzLib.sol";
 import {TokenBridgeBaseUpgradable} from "./TokenBridgeBaseUpgradable.sol";
-import {IWETH} from "./interfaces/IWETH.sol";
+import {IWETH} from "../interfaces/IWETH.sol";
 
 /// @dev Locks an ERC20 on the source chain and sends LZ message to the remote chain to mint a wrapped token
 contract OriginalTokenBridgeUpgradable is TokenBridgeBaseUpgradable {
