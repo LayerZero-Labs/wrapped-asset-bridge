@@ -20,6 +20,7 @@ contract WrappedERC20BurnableMintableBridgeUpgradable is WrappedTokenBridgeUpgra
         require(totalValueLocked[remoteChainId][remoteToken] >= amount, "WrappedTokenBridge: insufficient liquidity on the destination");
 
         totalValueLocked[remoteChainId][remoteToken] -= amount;
+        IERC20BurnableMintable(localToken).transferFrom(msg.sender, address(this), amount);
         IERC20BurnableMintable(localToken).burn(amount);
 
         uint withdrawalAmount = amount;
